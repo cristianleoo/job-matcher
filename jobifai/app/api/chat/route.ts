@@ -78,13 +78,16 @@ export async function POST(req: NextRequest) {
                 }
                 controller.close();
 
+                // Sanitize the response before saving
+                const sanitizedResponse = sanitizeUnicode(fullResponse);
+
                 // Save the message and response to Supabase
                 const { error: insertError } = await supabase
                     .from('chat_histories')
                     .insert({
                         user_id: supabaseUserId,
                         message: message,
-                        response: fullResponse
+                        response: sanitizedResponse
                     });
 
                 if (insertError) {
@@ -103,4 +106,11 @@ export async function POST(req: NextRequest) {
         console.error('Unexpected error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
+}
+
+// Function to sanitize Unicode escape sequences
+function sanitizeUnicode(str: string): string {
+    return str.replace(/\\u0000/g, '')  // Remove null characters
+              .replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F-\u009F]/g, '') // Remove control characters
+              .replace(/\\u/g, '\\\\u'); // Escape remaining Unicode sequences
 }

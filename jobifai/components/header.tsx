@@ -27,7 +27,10 @@ export function Header() {
               </Link>
             </div>
           </div>
-          <div className="ml-10 space-x-4">
+          <div className="ml-10 flex items-center space-x-4">
+            <Link href="/profile" className="text-base font-medium text-gray-500 hover:text-gray-900">
+              Profile
+            </Link>
             <UserButton afterSignOutUrl="/" />
           </div>
         </div>

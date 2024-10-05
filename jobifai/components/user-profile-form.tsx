@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PlusCircle, MinusCircle, Upload, X } from 'lucide-react';
+import { useUserStore } from '@/lib/userStore';
 
 export function UserProfileForm() {
   const { user } = useUser();
@@ -27,11 +28,12 @@ export function UserProfileForm() {
       desiredSalary: '',
       remotePreference: '',
     },
-    resume: null as File | null,
     linkedinProfile: '',
     githubProfile: '',
     personalWebsite: '',
   });
+  const [resume, setResume] = useState<File | null>(null);
+  const supabaseUserId = useUserStore((state) => state.supabaseUserId);
 
   type ProfileField = 'workExperience' | 'education';
   type WorkExperience = { company: string; position: string; startDate: string; endDate: string; description: string };
@@ -88,14 +90,117 @@ export function UserProfileForm() {
         }));
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setProfile(prev => ({ ...prev, resume: e.target.files![0] }));
+      const file = e.target.files[0];
+      setResume(file);
+      
+      const shouldPopulate = window.confirm("Would you like to populate the form fields with information from your resume?");
+      
+      if (shouldPopulate) {
+        const content = await readFileContent(file);
+        await extractResumeInfo(content);
+      }
+    }
+  };
+
+  const readFileContent = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => resolve(event.target?.result as string);
+      reader.onerror = (error) => reject(error);
+      reader.readAsText(file);
+    });
+  };
+
+  const extractResumeInfo = async (content: string) => {
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: `Extract the following information from this resume content and return it in a JSON format:
+{
+  "firstName": "",
+  "lastName": "",
+  "email": "",
+  "phone": "",
+  "location": "",
+  "bio": "",
+  "skills": [],
+  "workExperience": [
+    {
+      "company": "",
+      "position": "",
+      "startDate": "",
+      "endDate": "",
+      "description": ""
+    }
+  ],
+  "education": [
+    {
+      "institution": "",
+      "degree": "",
+      "fieldOfStudy": "",
+      "graduationDate": ""
+    }
+  ],
+  "portfolioLinks": [],
+  "jobPreferences": {
+    "desiredPosition": "",
+    "desiredIndustry": "",
+    "desiredSalary": "",
+    "remotePreference": ""
+  },
+  "linkedinProfile": "",
+  "githubProfile": "",
+  "personalWebsite": ""
+}
+
+Here's the resume content:
+${content}
+
+Ensure all fields are filled with the available information. Use "N/A" for missing information. For arrays, provide at least one item or an empty array if no information is found.`,
+          supabaseUserId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to extract resume information');
+      }
+
+      const result = await response.text();
+      console.log('Raw response:', result);
+
+      try {
+        const jsonMatch = result.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error('No valid JSON found in the response');
+        }
+        const jsonString = jsonMatch[0];
+        const extractedInfo = JSON.parse(jsonString);
+        console.log('Parsed extractedInfo:', extractedInfo);
+        
+        // Update profile without overriding Clerk-provided information
+        setProfile(prev => ({
+          ...prev,
+          ...extractedInfo,
+          firstName: prev.firstName, // Keep Clerk-provided firstName
+          lastName: prev.lastName,   // Keep Clerk-provided lastName
+          email: prev.email,         // Keep Clerk-provided email
+        }));
+      } catch (parseError) {
+        console.error('Error parsing response:', parseError);
+      }
+    } catch (error) {
+      console.error('Error extracting resume information:', error);
     }
   };
 
   const handleRemoveFile = () => {
-    setProfile(prev => ({ ...prev, resume: null }));
+    setResume(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -106,24 +211,60 @@ export function UserProfileForm() {
     // Here you would typically send the profile data to your backend
     // You'll need to handle file upload separately, possibly using FormData
     console.log('Profile data:', profile);
-    console.log('Resume file:', profile.resume);
+    console.log('Resume file:', resume);
     alert('Profile updated successfully!');
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Resume upload section */}
+      <div>
+        <Label htmlFor="resume">Resume</Label>
+        <div className="flex items-center gap-2 mt-2">
+          <Input
+            id="resume"
+            type="file"
+            onChange={handleFileUpload}
+            className="hidden"
+            ref={fileInputRef}
+            accept=".pdf,.doc,.docx"
+          />
+          <Button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2"
+          >
+            <Upload className="h-4 w-4" />
+            Upload Resume
+          </Button>
+          {resume && (
+            <div className="flex items-center gap-2">
+              <span>{resume.name}</span>
+              <Button
+                type="button"
+                onClick={handleRemoveFile}
+                size="icon"
+                variant="destructive"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Label htmlFor="firstName">First Name</Label>
-          <Input id="firstName" name="firstName" value={profile.firstName} onChange={handleChange} />
+          <Input id="firstName" name="firstName" value={profile.firstName} readOnly />
         </div>
         <div>
           <Label htmlFor="lastName">Last Name</Label>
-          <Input id="lastName" name="lastName" value={profile.lastName} onChange={handleChange} />
+          <Input id="lastName" name="lastName" value={profile.lastName} readOnly />
         </div>
         <div>
           <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" value={profile.email} onChange={handleChange} />
+          <Input id="email" name="email" type="email" value={profile.email} readOnly />
         </div>
         <div>
           <Label htmlFor="phone">Phone</Label>
@@ -219,42 +360,6 @@ export function UserProfileForm() {
         <Input className="mt-2" placeholder="Desired Industry" value={profile.jobPreferences.desiredIndustry} onChange={(e) => setProfile(prev => ({ ...prev, jobPreferences: { ...prev.jobPreferences, desiredIndustry: e.target.value } }))} />
         <Input className="mt-2" placeholder="Desired Salary" type="number" value={profile.jobPreferences.desiredSalary} onChange={(e) => setProfile(prev => ({ ...prev, jobPreferences: { ...prev.jobPreferences, desiredSalary: e.target.value } }))} />
         <Input className="mt-2" placeholder="Remote Preference" value={profile.jobPreferences.remotePreference} onChange={(e) => setProfile(prev => ({ ...prev, jobPreferences: { ...prev.jobPreferences, remotePreference: e.target.value } }))} />
-      </div>
-
-      {/* Add the resume upload section */}
-      <div>
-        <Label htmlFor="resume">Resume</Label>
-        <div className="flex items-center gap-2 mt-2">
-          <Input
-            id="resume"
-            type="file"
-            onChange={handleFileUpload}
-            className="hidden"
-            ref={fileInputRef}
-            accept=".pdf,.doc,.docx"
-          />
-          <Button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2"
-          >
-            <Upload className="h-4 w-4" />
-            Upload Resume
-          </Button>
-          {profile.resume && (
-            <div className="flex items-center gap-2">
-              <span>{profile.resume.name}</span>
-              <Button
-                type="button"
-                onClick={handleRemoveFile}
-                size="icon"
-                variant="destructive"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-        </div>
       </div>
 
       <div>
