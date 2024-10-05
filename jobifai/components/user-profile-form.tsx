@@ -5,9 +5,10 @@ import { useUser, useAuth } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, MinusCircle, Upload, X } from 'lucide-react';
+import { PlusCircle, MinusCircle, Upload, X, MessageSquare } from 'lucide-react';
 import { useUserStore } from '@/lib/userStore';
 import { createClient } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,6 +42,8 @@ export function UserProfileForm() {
   });
   const [resume, setResume] = useState<File | null>(null);
   const supabaseUserId = useUserStore((state) => state.supabaseUserId);
+  const [existingResume, setExistingResume] = useState<string | null>(null);
+  const router = useRouter();
 
   type ProfileField = 'workExperience' | 'education';
   type WorkExperience = { company: string; position: string; startDate: string; endDate: string; description: string };
@@ -215,8 +218,6 @@ export function UserProfileForm() {
         if (userSkillError) throw userSkillError;
       }
 
-      console.log("skills updated")
-
       // Only update job preferences if they exist
       if (profile.jobPreferences && Object.keys(profile.jobPreferences).some(key => 
         profile.jobPreferences[key as keyof typeof profile.jobPreferences]
@@ -233,8 +234,6 @@ export function UserProfileForm() {
 
         if (jobPrefError) throw jobPrefError;
       }
-
-      console.log("job preferences updated")
 
       // Update work experience
       await supabase
@@ -257,8 +256,6 @@ export function UserProfileForm() {
         if (workExpError) throw workExpError;
       }
 
-      console.log("work experience updated")
-
       // Update education
       await supabase
         .from('education')
@@ -279,8 +276,6 @@ export function UserProfileForm() {
         if (eduError) throw eduError;
       }
 
-      console.log("education updated")
-
       // Update portfolio links
       await supabase
         .from('portfolio_links')
@@ -297,8 +292,6 @@ export function UserProfileForm() {
 
         if (linkError) throw linkError;
       }
-
-      console.log("portfolio links updated")
 
       // Handle resume upload if a new file is selected
       if (resume) {
@@ -324,8 +317,6 @@ export function UserProfileForm() {
 
         if (resumeError) throw resumeError;
       }
-
-      console.log("resume updated")
 
       alert('Profile updated successfully!');
     } catch (error) {
@@ -390,6 +381,19 @@ export function UserProfileForm() {
 
         if (portfolioError) throw portfolioError;
 
+        // Fetch resume information
+        const { data: resumeData, error: resumeError } = await supabase
+          .from('resumes')
+          .select('title')
+          .eq('user_id', supabaseUserId)
+          .single();
+
+        if (resumeError && resumeError.code !== 'PGRST116') throw resumeError;
+
+        if (resumeData) {
+          setExistingResume(resumeData.title);
+        }
+
         // Update the profile state with fetched data
         setProfile(prevProfile => ({
           ...prevProfile,
@@ -401,7 +405,7 @@ export function UserProfileForm() {
           linkedinProfile: userData.linkedin_profile || '',
           githubProfile: userData.github_profile || '',
           personalWebsite: userData.personal_website || '',
-          skills: skillsData.map(skill => skill.skills.name) || [''],
+          skills: skillsData.map(skill => skill.skills?.[0]?.name || '').filter(Boolean) || [''],
           workExperience: workExpData.map(exp => ({
             company: exp.company,
             position: exp.position,
@@ -433,6 +437,11 @@ export function UserProfileForm() {
     fetchUserData();
   }, [supabaseUserId]);
 
+  // Add this function to handle chatting with the resume
+  const handleChatWithResume = () => {
+    router.push('/chat?context=resume');
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Resume upload section */}
@@ -453,11 +462,11 @@ export function UserProfileForm() {
             className="flex items-center gap-2"
           >
             <Upload className="h-4 w-4" />
-            Upload Resume
+            {existingResume ? 'Update Resume' : 'Upload Resume'}
           </Button>
-          {resume && (
+          {(resume || existingResume) && (
             <div className="flex items-center gap-2">
-              <span>{resume.name}</span>
+              <span>{resume ? resume.name : existingResume}</span>
               <Button
                 type="button"
                 onClick={handleRemoveFile}
@@ -467,6 +476,16 @@ export function UserProfileForm() {
                 <X className="h-4 w-4" />
               </Button>
             </div>
+          )}
+          {existingResume && (
+            <Button
+              type="button"
+              onClick={handleChatWithResume}
+              className="flex items-center gap-2"
+            >
+              <MessageSquare className="h-4 w-4" />
+              Chat with Resume
+            </Button>
           )}
         </div>
       </div>

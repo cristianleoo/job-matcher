@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { message, supabaseUserId } = await req.json();
+    const { message, supabaseUserId, context } = await req.json();
 
     if (!supabaseUserId) {
         console.log("Supabase user ID not found in request");
@@ -37,17 +37,55 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        // Fetch chat history from Supabase
-        const { data: chatHistory, error: fetchError } = await supabase
-            .from('chat_histories')
-            .select('message, response')
-            .eq('user_id', supabaseUserId)
-            .order('timestamp', { ascending: true })
-            .limit(10);
+        let chatHistory;
+        let resumeContent = '';
 
-        if (fetchError) {
-            console.error('Error fetching chat history:', fetchError);
-            return NextResponse.json({ error: 'Error fetching chat history' }, { status: 500 });
+        if (context === 'resume') {
+            // Fetch resume content
+            const { data: resumeData, error: resumeError } = await supabase
+                .from('resumes')
+                .select('content')
+                .eq('user_id', supabaseUserId)
+                .single();
+
+            if (resumeError) {
+                console.error('Error fetching resume:', resumeError);
+                return NextResponse.json({ error: 'Error fetching resume' }, { status: 500 });
+            }
+
+            resumeContent = resumeData?.content || '';
+
+            // Fetch chat history specific to resume context
+            const { data: resumeChatHistory, error: fetchError } = await supabase
+                .from('chat_histories')
+                .select('message, response')
+                .eq('user_id', supabaseUserId)
+                .eq('context', 'resume')
+                .order('timestamp', { ascending: true })
+                .limit(10);
+
+            if (fetchError) {
+                console.error('Error fetching resume chat history:', fetchError);
+                return NextResponse.json({ error: 'Error fetching resume chat history' }, { status: 500 });
+            }
+
+            chatHistory = resumeChatHistory;
+        } else {
+            // Fetch general chat history
+            const { data: generalChatHistory, error: fetchError } = await supabase
+                .from('chat_histories')
+                .select('message, response')
+                .eq('user_id', supabaseUserId)
+                .is('context', null)
+                .order('timestamp', { ascending: true })
+                .limit(10);
+
+            if (fetchError) {
+                console.error('Error fetching chat history:', fetchError);
+                return NextResponse.json({ error: 'Error fetching chat history' }, { status: 500 });
+            }
+
+            chatHistory = generalChatHistory;
         }
 
         // Prepare chat history for Gemini
@@ -56,7 +94,7 @@ export async function POST(req: NextRequest) {
             { role: "model", parts: [{ text: entry.response }] }
         ]).flat() || [];
 
-        // Start chat with history
+        // Start chat with history and resume content if applicable
         const chat = model.startChat({
             history: history,
             // generationConfig: {
@@ -64,8 +102,13 @@ export async function POST(req: NextRequest) {
             // },
         });
 
+        // If it's a resume context, add the resume content to the message
+        const fullMessage = context === 'resume' 
+            ? `Given the following resume content: ${resumeContent}\n\nUser question: ${message}`
+            : message;
+
         // Send message and get stream
-        const result = await chat.sendMessageStream(message);
+        const result = await chat.sendMessageStream(fullMessage);
 
         // Prepare the stream response
         const stream = new ReadableStream({
@@ -87,7 +130,8 @@ export async function POST(req: NextRequest) {
                     .insert({
                         user_id: supabaseUserId,
                         message: message,
-                        response: sanitizedResponse
+                        response: sanitizedResponse,
+                        context: context === 'resume' ? 'resume' : null
                     });
 
                 if (insertError) {
