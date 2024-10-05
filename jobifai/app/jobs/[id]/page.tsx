@@ -64,7 +64,7 @@ export default function JobDetailsPage() {
         View Original Job Posting
       </a>
       <div className="mt-8">
-        <Link href="/jobs">
+        <Link href="/applications">
           <button className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
             Back to Job List
           </button>

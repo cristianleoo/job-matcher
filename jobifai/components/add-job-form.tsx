@@ -4,8 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@clerk/nextjs';
 import React from 'react';
+import { useUserStore } from '@/lib/userStore';
 
-export function AddJobForm() {
+export function AddJobForm({ onJobAdded }: { onJobAdded: () => void }) {
   const { userId } = useAuth();
   const [jobData, setJobData] = useState({
     title: '',
@@ -16,6 +17,7 @@ export function AddJobForm() {
   const [jobUrl, setJobUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isManualEntry, setIsManualEntry] = useState(false);
+  const supabaseUserId = useUserStore((state) => state.supabaseUserId);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -58,22 +60,24 @@ export function AddJobForm() {
     try {
       const response = await fetch('/api/jobs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, jobData, jobUrl }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ jobData, jobUrl, supabaseUserId }),
       });
 
       if (!response.ok) {
         throw new Error('Failed to add job');
       }
 
-      // Reset form and show success message
-      setJobData({ title: '', company: '', location: '', description: '' });
+      // Clear the form
+      setJobData({ title: '', company: '', description: '', location: '' });
       setJobUrl('');
-      setIsManualEntry(false);
-      alert('Job added successfully!');
+
+      // Call the onJobAdded callback
+      onJobAdded();
     } catch (error) {
       console.error('Error adding job:', error);
-      alert('Failed to add job. Please try again.');
     } finally {
       setIsLoading(false);
     }

@@ -14,25 +14,38 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(request: Request) {
-  const { userId } = auth();
-  if (!userId) {
+  const { userId: clerkUserId } = auth();
+  if (!clerkUserId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { jobData, jobUrl, supabaseUserId } = await request.json();
-
-  if (!supabaseUserId) {
-    return NextResponse.json({ error: 'Supabase user ID is required' }, { status: 400 });
-  }
-
   try {
+    // First, fetch the Supabase user ID using the Clerk user ID
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('clerk_id', clerkUserId)
+      .single();
+
+    if (userError || !userData) {
+      console.error('Error fetching Supabase user:', userError);
+      return NextResponse.json({ error: 'Failed to fetch user data' }, { status: 500 });
+    }
+
+    const supabaseUserId = userData.id;
+
+    const { jobData, jobUrl } = await request.json();
+
+    console.log('jobData:', jobData);
+    console.log('jobUrl:', jobUrl);
+
     const { data, error } = await supabase
       .from('job_applications')
       .insert({
         user_id: supabaseUserId,
         status: 'applied',
         applied_date: new Date().toISOString(),
-        notes: jobData.description,
+        description: jobData.description,
         title: jobData.title,
         company: jobData.company,
         location: jobData.location,

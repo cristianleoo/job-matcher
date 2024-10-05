@@ -1,6 +1,10 @@
-import { useState, useEffect } from 'react';
+"use client";
+
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import Link from 'next/link';
+import { useUserStore } from '@/lib/userStore';
+import { AddJobForm } from './add-job-form';
 
 interface JobApplication {
   id: string;
@@ -13,29 +17,65 @@ interface JobApplication {
 export function ApplicationTracker() {
   const { isLoaded, userId } = useAuth();
   const [applications, setApplications] = useState<JobApplication[]>([]);
+  const supabaseUserId = useUserStore((state) => state.supabaseUserId);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+
+  const fetchApplications = useCallback(async () => {
+    if (!supabaseUserId) return;
+    try {
+      const response = await fetch(`/api/jobs?supabaseUserId=${supabaseUserId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch applications');
+      }
+      const data = await response.json();
+      setApplications(data);
+    } catch (error) {
+      console.error('Error fetching applications:', error);
+    }
+  }, [supabaseUserId]);
 
   useEffect(() => {
-    const fetchApplications = async () => {
-      if (!isLoaded || !userId) return;
+    if (isLoaded && userId && supabaseUserId) {
+      fetchApplications();
+    }
+  }, [isLoaded, userId, supabaseUserId, fetchApplications]);
 
-      try {
-        const response = await fetch(`/api/jobs`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch applications');
-        }
-        const data = await response.json();
-        setApplications(data);
-      } catch (error) {
-        console.error('Error fetching applications:', error);
+  const handleDelete = async (jobId: string) => {
+    try {
+      const response = await fetch(`/api/jobs?jobId=${jobId}&supabaseUserId=${supabaseUserId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete job');
       }
-    };
 
+      // Refresh the application list after successful deletion
+      fetchApplications();
+    } catch (error) {
+      console.error('Error deleting job:', error);
+    }
+  };
+
+  const handleJobAdded = () => {
+    setShowSuccessMessage(true);
     fetchApplications();
-  }, [isLoaded, userId]);
+    setTimeout(() => setShowSuccessMessage(false), 3000);
+  };
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">Your Applications</h2>
+      <h2 className="text-2xl font-bold mb-4">Add New Job Application</h2>
+      <AddJobForm onJobAdded={handleJobAdded} />
+      
+      {showSuccessMessage && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mt-4 mb-4" role="alert">
+          <strong className="font-bold">Success!</strong>
+          <span className="block sm:inline"> Job added successfully.</span>
+        </div>
+      )}
+
+      <h2 className="text-2xl font-bold mb-4 mt-8">Your Applications</h2>
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white">
           <thead className="bg-gray-100">
@@ -57,11 +97,19 @@ export function ApplicationTracker() {
                   {new Date(app.applied_date).toLocaleDateString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <Link href={`/jobs/${app.id}`}>
-                    <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded">
-                      View
+                  <div className="flex space-x-2">
+                    <Link href={`/jobs/${app.id}`}>
+                      <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded">
+                        View
+                      </button>
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(app.id)}
+                      className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded"
+                    >
+                      Delete
                     </button>
-                  </Link>
+                  </div>
                 </td>
               </tr>
             ))}
