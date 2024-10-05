@@ -28,6 +28,9 @@ export function UserProfileForm() {
       remotePreference: '',
     },
     resume: null as File | null,
+    linkedinProfile: '',
+    githubProfile: '',
+    personalWebsite: '',
   });
 
   type ProfileField = 'workExperience' | 'education';
@@ -252,6 +255,19 @@ export function UserProfileForm() {
             </div>
           )}
         </div>
+      </div>
+
+      <div>
+        <Label htmlFor="linkedinProfile">LinkedIn Profile</Label>
+        <Input id="linkedinProfile" name="linkedinProfile" value={profile.linkedinProfile} onChange={handleChange} />
+      </div>
+      <div>
+        <Label htmlFor="githubProfile">GitHub Profile</Label>
+        <Input id="githubProfile" name="githubProfile" value={profile.githubProfile} onChange={handleChange} />
+      </div>
+      <div>
+        <Label htmlFor="personalWebsite">Personal Website</Label>
+        <Input id="personalWebsite" name="personalWebsite" value={profile.personalWebsite} onChange={handleChange} />
       </div>
 
       <Button type="submit" className="w-full">Update Profile</Button>

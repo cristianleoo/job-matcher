@@ -1,29 +1,62 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 // import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 
 export function AIAssistant() {
-  const [messages, setMessages] = useState([
-    { role: "assistant", content: "Hello! How can I assist you with your job search today?" },
-  ]);
+  const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
   const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    // Load chat history from local storage on component mount
+    const savedMessages = localStorage.getItem('chatHistory');
+    if (savedMessages) {
+      setMessages(JSON.parse(savedMessages));
+    } else {
+      setMessages([{ role: "assistant", content: "Hello! How can I assist you with your job search today?" }]);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Save chat history to local storage whenever it changes
+    localStorage.setItem('chatHistory', JSON.stringify(messages));
+  }, [messages]);
 
   const handleSend = async () => {
-    if (input.trim()) {
-      setMessages([...messages, { role: "user", content: input }]);
+    if (input.trim() && !isLoading) {
+      setIsLoading(true);
+      const userMessage = { role: "user", content: input };
+      setMessages(prev => [...prev, userMessage]);
       setInput("");
-      // Here you would typically call your AI service (e.g., Gemini API)
-      // For now, we'll just simulate a response
-      setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: "I'm sorry, I'm just a placeholder response for now." },
-        ]);
-      }, 1000);
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: input,
+            chatHistory: messages,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to get AI response');
+        }
+
+        const data = await response.json();
+        setMessages(prev => [...prev, { role: "assistant", content: data.aiResponse }]);
+      } catch (error) {
+        console.error('Error in AI chat:', error);
+        setMessages(prev => [...prev, { role: "assistant", content: "I'm sorry, I encountered an error. Please try again." }]);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -47,8 +80,9 @@ export function AIAssistant() {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask me anything..."
           onKeyPress={(e) => e.key === "Enter" && handleSend()}
+          disabled={isLoading}
         />
-        <Button onClick={handleSend}>
+        <Button onClick={handleSend} disabled={isLoading}>
           <Send className="h-4 w-4" />
         </Button>
       </div>
