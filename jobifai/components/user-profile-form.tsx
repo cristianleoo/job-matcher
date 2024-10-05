@@ -405,7 +405,7 @@ export function UserProfileForm() {
           linkedinProfile: userData.linkedin_profile || '',
           githubProfile: userData.github_profile || '',
           personalWebsite: userData.personal_website || '',
-          skills: skillsData.map(skill => skill.skills?.[0]?.name || '').filter(Boolean) || [''],
+          skills: skillsData?.flatMap(item => (Array.isArray(item.skills) ? item.skills : [item.skills]).map(skill => skill?.name || '')).filter(Boolean) || [''],
           workExperience: workExpData.map(exp => ({
             company: exp.company,
             position: exp.position,
