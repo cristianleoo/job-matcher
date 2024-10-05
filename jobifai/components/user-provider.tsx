@@ -1,30 +1,46 @@
 "use client";
 
-import { useEffect } from 'react';
-import { useAuth } from '@clerk/nextjs';
+import React, { useEffect, useCallback } from 'react';
+import { useUser } from '@clerk/nextjs';
 import { useUserStore } from '@/lib/userStore';
-import React from 'react';
+import { createClient } from '@supabase/supabase-js';
 
-export function UserProvider({ children }: { children: React.ReactNode }) {
-  const { userId } = useAuth();
-  const setSupabaseUserId = useUserStore((state) => state.setSupabaseUserId);
+interface UserProviderProps {
+  children: React.ReactNode;
+}
+
+export function UserProvider({ children }: UserProviderProps) {
+  const { isLoaded: isClerkLoaded, user: clerkUser } = useUser();
+  const [supabaseUserId, setSupabaseUserId] = React.useState<string | null>(null);
+
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+
+  const fetchSupabaseUserId = useCallback(async (clerkId: string) => {
+    try {
+      const { data, error } = await supabase.from('users')
+        .select('id')
+        .eq('clerk_id', clerkId)
+        .single();
+
+      if (error) throw error;
+      setSupabaseUserId(data.id);
+      useUserStore.setState({ supabaseUserId: data.id });
+    } catch (error) {
+      console.error('Error fetching Supabase user ID:', error);
+      console.log(`Error fetching Supabase user ID: ${error}`);
+    }
+  }, [supabase]);
 
   useEffect(() => {
-    if (userId) {
-      // Fetch Supabase user ID here
-      fetch('/api/auth', { method: 'POST' })
-        .then(res => res.json())
-        .then(data => {
-          if (data.user && data.user.id) {
-            console.log('Setting supabaseUserId:', data.user.id);
-            setSupabaseUserId(data.user.id);
-          } else {
-            console.error('No Supabase user ID found in response');
-          }
-        })
-        .catch(error => console.error('Error fetching user data:', error));
+    if (isClerkLoaded && clerkUser?.id && !supabaseUserId) {
+      fetchSupabaseUserId(clerkUser.id);
     }
-  }, [userId, setSupabaseUserId]);
+  }, [isClerkLoaded, clerkUser?.id, supabaseUserId, fetchSupabaseUserId]);
 
-  return <>{children}</>;
+  // Render children or loading state
+  return (
+    <>
+      {children}
+    </>
+  );
 }

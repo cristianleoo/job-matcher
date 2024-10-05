@@ -10,13 +10,15 @@ interface JobApplication {
 }
 
 export function ApplicationTracker() {
-  const { userId } = useAuth();
+  const { isLoaded, userId } = useAuth();
   const [applications, setApplications] = useState<JobApplication[]>([]);
 
   useEffect(() => {
     const fetchApplications = async () => {
+      if (!isLoaded || !userId) return;
+
       try {
-        const response = await fetch(`/api/jobs?userId=${userId}`);
+        const response = await fetch(`/api/jobs`);
         if (!response.ok) {
           throw new Error('Failed to fetch applications');
         }
@@ -27,34 +29,36 @@ export function ApplicationTracker() {
       }
     };
 
-    if (userId) {
-      fetchApplications();
-    }
-  }, [userId]);
+    fetchApplications();
+  }, [isLoaded, userId]);
 
   return (
     <div>
       <h2 className="text-2xl font-bold mb-4">Your Applications</h2>
-      <table className="min-w-full">
-        <thead>
-          <tr>
-            <th>Title</th>
-            <th>Company</th>
-            <th>Status</th>
-            <th>Applied Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {applications.map((app) => (
-            <tr key={app.id}>
-              <td>{app.title}</td>
-              <td>{app.company}</td>
-              <td>{app.status}</td>
-              <td>{new Date(app.applied_date).toLocaleDateString()}</td>
+      <div className="overflow-x-auto">
+        <table className="min-w-full bg-white">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applied Date</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {applications.map((app) => (
+              <tr key={app.id}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{app.title}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{app.company}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{app.status}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {new Date(app.applied_date).toLocaleDateString()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

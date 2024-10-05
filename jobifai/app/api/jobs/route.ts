@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { auth } from '@clerk/nextjs/server';
+import { useUserStore } from '@/lib/userStore';
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -52,29 +53,37 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const { userId } = auth();
-  if (!userId) {
+  const { userId: clerkUserId } = auth();
+  if (!clerkUserId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { searchParams } = new URL(request.url);
-  const supabaseUserId = searchParams.get('supabaseUserId');
-
-  if (!supabaseUserId) {
-    return NextResponse.json({ error: 'Supabase user ID is required' }, { status: 400 });
-  }
-
   try {
-    const { data, error } = await supabase
+    // First, fetch the Supabase user ID using the Clerk user ID
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('clerk_id', clerkUserId)
+      .single();
+
+    if (userError || !userData) {
+      console.error('Error fetching Supabase user:', userError);
+      return NextResponse.json({ error: 'Failed to fetch user data' }, { status: 500 });
+    }
+
+    const supabaseUserId = userData.id;
+
+    console.log('Fetching jobs for Supabase user:', supabaseUserId);
+    const { data: jobsData, error: jobsError } = await supabase
       .from('job_applications')
       .select('*')
       .eq('user_id', supabaseUserId);
 
-    if (error) {
-      throw error;
+    if (jobsError) {
+      throw jobsError;
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(jobsData);
   } catch (error) {
     console.error('Error fetching jobs:', error);
     return NextResponse.json({ error: 'Failed to fetch jobs' }, { status: 500 });
