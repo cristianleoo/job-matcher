@@ -90,6 +90,29 @@ export function UserProfileForm() {
         }));
   };
 
+  const readFileContent = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('userId', supabaseUserId || '');
+
+    try {
+      const response = await fetch('/api/process-pdf', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to process PDF');
+      }
+
+      const result = await response.json();
+      return result.text;
+    } catch (error) {
+      console.error('Error reading file:', error);
+      throw error;
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -98,104 +121,33 @@ export function UserProfileForm() {
       const shouldPopulate = window.confirm("Would you like to populate the form fields with information from your resume?");
       
       if (shouldPopulate) {
-        const content = await readFileContent(file);
-        await extractResumeInfo(content);
+        try {
+          const content = await readFileContent(file);
+          await extractResumeInfo(content);
+        } catch (error) {
+          console.error('Error reading file:', error);
+          alert('There was an error reading your file. Please try again.');
+        }
       }
     }
-  };
-
-  const readFileContent = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (event) => resolve(event.target?.result as string);
-      reader.onerror = (error) => reject(error);
-      reader.readAsText(file);
-    });
   };
 
   const extractResumeInfo = async (content: string) => {
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: `Extract the following information from this resume content and return it in a JSON format:
-{
-  "firstName": "",
-  "lastName": "",
-  "email": "",
-  "phone": "",
-  "location": "",
-  "bio": "",
-  "skills": [],
-  "workExperience": [
-    {
-      "company": "",
-      "position": "",
-      "startDate": "",
-      "endDate": "",
-      "description": ""
-    }
-  ],
-  "education": [
-    {
-      "institution": "",
-      "degree": "",
-      "fieldOfStudy": "",
-      "graduationDate": ""
-    }
-  ],
-  "portfolioLinks": [],
-  "jobPreferences": {
-    "desiredPosition": "",
-    "desiredIndustry": "",
-    "desiredSalary": "",
-    "remotePreference": ""
-  },
-  "linkedinProfile": "",
-  "githubProfile": "",
-  "personalWebsite": ""
-}
-
-Here's the resume content:
-${content}
-
-Ensure all fields are filled with the available information. Use "N/A" for missing information. For arrays, provide at least one item or an empty array if no information is found.`,
-          supabaseUserId,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to extract resume information');
-      }
-
-      const result = await response.text();
-      console.log('Raw response:', result);
-
-      try {
-        const jsonMatch = result.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-          throw new Error('No valid JSON found in the response');
-        }
-        const jsonString = jsonMatch[0];
-        const extractedInfo = JSON.parse(jsonString);
-        console.log('Parsed extractedInfo:', extractedInfo);
-        
-        // Update profile without overriding Clerk-provided information
-        setProfile(prev => ({
-          ...prev,
-          ...extractedInfo,
-          firstName: prev.firstName, // Keep Clerk-provided firstName
-          lastName: prev.lastName,   // Keep Clerk-provided lastName
-          email: prev.email,         // Keep Clerk-provided email
-        }));
-      } catch (parseError) {
-        console.error('Error parsing response:', parseError);
-      }
+      // Parse the content returned by Gemini
+      const extractedInfo = JSON.parse(content);
+      
+      // Update profile state with extracted information
+      setProfile(prev => ({
+        ...prev,
+        ...extractedInfo,
+        firstName: prev.firstName, // Keep Clerk-provided firstName
+        lastName: prev.lastName,   // Keep Clerk-provided lastName
+        email: prev.email,         // Keep Clerk-provided email
+      }));
     } catch (error) {
-      console.error('Error extracting resume information:', error);
+      console.error('Error parsing extracted resume information:', error);
+      alert('There was an error processing your resume. Please try again or fill in the information manually.');
     }
   };
 
