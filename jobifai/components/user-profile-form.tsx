@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, MinusCircle } from 'lucide-react';
+import { PlusCircle, MinusCircle, Upload, X } from 'lucide-react';
 
 export function UserProfileForm() {
   const { user } = useUser();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState({
     firstName: '',
     lastName: '',
@@ -26,11 +27,12 @@ export function UserProfileForm() {
       desiredSalary: '',
       remotePreference: '',
     },
+    resume: null as File | null,
   });
 
-type ProfileField = 'workExperience' | 'education';
-type WorkExperience = { company: string; position: string; startDate: string; endDate: string; description: string };
-type Education = { institution: string; degree: string; fieldOfStudy: string; graduationDate: string };
+  type ProfileField = 'workExperience' | 'education';
+  type WorkExperience = { company: string; position: string; startDate: string; endDate: string; description: string };
+  type Education = { institution: string; degree: string; fieldOfStudy: string; graduationDate: string };
 
   useEffect(() => {
     if (user) {
@@ -83,10 +85,25 @@ type Education = { institution: string; degree: string; fieldOfStudy: string; gr
         }));
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setProfile(prev => ({ ...prev, resume: e.target.files![0] }));
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setProfile(prev => ({ ...prev, resume: null }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Here you would typically send the profile data to your backend
+    // You'll need to handle file upload separately, possibly using FormData
     console.log('Profile data:', profile);
+    console.log('Resume file:', profile.resume);
     alert('Profile updated successfully!');
   };
 
@@ -199,6 +216,42 @@ type Education = { institution: string; degree: string; fieldOfStudy: string; gr
         <Input className="mt-2" placeholder="Desired Industry" value={profile.jobPreferences.desiredIndustry} onChange={(e) => setProfile(prev => ({ ...prev, jobPreferences: { ...prev.jobPreferences, desiredIndustry: e.target.value } }))} />
         <Input className="mt-2" placeholder="Desired Salary" type="number" value={profile.jobPreferences.desiredSalary} onChange={(e) => setProfile(prev => ({ ...prev, jobPreferences: { ...prev.jobPreferences, desiredSalary: e.target.value } }))} />
         <Input className="mt-2" placeholder="Remote Preference" value={profile.jobPreferences.remotePreference} onChange={(e) => setProfile(prev => ({ ...prev, jobPreferences: { ...prev.jobPreferences, remotePreference: e.target.value } }))} />
+      </div>
+
+      {/* Add the resume upload section */}
+      <div>
+        <Label htmlFor="resume">Resume</Label>
+        <div className="flex items-center gap-2 mt-2">
+          <Input
+            id="resume"
+            type="file"
+            onChange={handleFileUpload}
+            className="hidden"
+            ref={fileInputRef}
+            accept=".pdf,.doc,.docx"
+          />
+          <Button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2"
+          >
+            <Upload className="h-4 w-4" />
+            Upload Resume
+          </Button>
+          {profile.resume && (
+            <div className="flex items-center gap-2">
+              <span>{profile.resume.name}</span>
+              <Button
+                type="button"
+                onClick={handleRemoveFile}
+                size="icon"
+                variant="destructive"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       <Button type="submit" className="w-full">Update Profile</Button>
