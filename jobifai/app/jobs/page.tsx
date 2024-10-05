@@ -13,7 +13,6 @@ interface Job {
 }
 
 export default function JobsPage() {
-  console.log('JobsPage component rendered'); // Step 1: Verify component rendering
 
   const [jobs, setJobs] = useState<Job[]>([]);
   const supabaseUserId = useUserStore((state) => state.supabaseUserId);
@@ -89,7 +88,6 @@ export default function JobsPage() {
             </thead>
             <tbody>
               {jobs.map((job: Job) => {
-                console.log('Rendering job:', job); // Step 3: Inspect table rendering
                 return (
                   <tr key={job.id} className="hover:bg-gray-50">
                     <td className="py-2 px-4 border-b">{job.title}</td>
