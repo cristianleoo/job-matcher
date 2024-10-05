@@ -604,3 +604,130 @@ for await (const chunk of result.stream) {
 ```
 
 If successful, the response body contains a stream of GenerateContentResponse instances.
+
+## JobBoard API
+{
+  "data": [
+    {
+      "slug": "stagiaire-audit-des-systemes-dinformation-lille-mai-2022-hf-mazars-275214",
+      "company_name": "MAZARS",
+      "title": "Stagiaire Audit des systèmes d'information - Lille - Mai 2022 (H/F)",
+      "description": "<p>Mazars est une organisation internationale, intégrée et indépendante spécialisée dans l&apos;audit, le conseil, ainsi que les services comptables, fiscaux et juridiques[1]. Présent dans 91 pays et territoires à travers le monde, Mazars fédère les expertises de 40 400 professionnels - 24 400 professionnels au sein du partnership intégré de Mazars et 16 000 professionnels aux Etats-Unis et au Canada au sein de « Mazars North America Alliance » - qui accompagnent des clients de toutes tailles à chaque étape de leur développement.</p><p>[1] Dans les pays où les lois en vigueur l’autorisent</p><p>Pour accompagner le développement de son activité audit des systèmes d&apos;information, Mazars Lille recrute un auditeur stagiaire en Audit IT.</p><p>Vous aidez à étayer ou renforcer l&apos;opinion du commissaire aux comptes, en participant à l&apos;analyse des systèmes d&apos;information contribuant à la production des comptes.<br />En dehors de mandats de commissariat aux comptes réglementaires, vous assistez différents clients dans l&apos;analyse de situations mêlant systèmes d&apos;information et problématiques financières :</p><ul><li>d&apos;audit des contrôles généraux informatiques,</li><li>d&apos;analyse et de revue de la fonction informatique ou des processus métiers,</li><li>de cartographie des Systèmes d&apos;Information,</li><li>d&apos;analyse de migration de systèmes d&apos;information,</li><li>d&apos;analyse de données à l&apos;aide d&apos;outils spécialisés,</li><li>de revue de sécurité.</li></ul><p>Vous intervenez en équipe auprès de grands clients et bénéficiez d&apos;une dynamique de progression stimulante.</p><p>Vous serez basé(e) à Villeneuve d&apos;Ascq (Métro Les Près) et l&apos;implantation géographique de nos clients pourra vous conduire à effectuer des déplacements.</p><p>Intégration prévue en Mai 2022.</p><p>Durée du stage 3 mois.</p><p>Vous êtes étudiant(e) d&apos;une grande Ecole d&apos;Ingénieur ou de Commerce ou d&apos;un troisième cycle Universitaire et avez un goût prononcé pour les problématiques liées aux Systèmes d&apos;Information.</p><p>Motivé(e) par un métier formateur s&apos;appuyant sur des procédures et une expertise reconnues, vous possédez, outre des qualités d&apos;analyse et de rédaction, un sens aigu des relations humaines qui vous permettra d&apos;être à l&apos;écoute de nos clients et de vous intégrer dans nos équipes.</p><p>Ouvert et curieux, vous pouvez compter sur une forte capacité d&apos;autonomie et de travail.</p><p><strong>Rejoignez-nous !</strong></p><p> </p><ol><li>Évolution rapide</li><li>Formation sur-mesure</li><li>Équipe jeune et dyamique</li><li>Environnement challengeant</li><li>Non sectorisation les premières années</li></ol>",
+      "remote": false,
+      "url": "https://arbeitnow.com/view/stagiaire-audit-des-systemes-dinformation-lille-mai-2022-hf-mazars-275214",
+      "tags": [
+        "Accounting",
+        "accounting/auditing"
+      ],
+      "job_types": [
+        "Internship",
+        "full time"
+      ],
+      "location": "Villeneuve-d'Ascq",
+      "created_at": 1638006745
+    },
+    {
+      "slug": "mulesoft-developer-ateeca-178727",
+      "company_name": "ateeca",
+      "title": "Mulesoft Developer",
+      "description": "<p>Key Requirement:<br />o Hands-on experience on Building interfaces on any ESB platform.<br />o Experience in Core Java, Messaging (JMS), Web API: SOAP, REST and authentication<br />methods such as OAuth and SAML<br />o Mulesoft integration developers are also responsible for managing the any point<br />Cloud Hub environment and supporting existing customer implementations.<br />o Work on enhancements and bug fixes to existing Mulesoft applications.<br />o Hands-on experience with open source and agile development tools such as GitHub<br />or SVN, and Maven<br />o Utilize an Agile / Scrum methodology to manage development work.<br />o Experience of working with Mulesoft components, workflow, and patterns, and how<br />to configure them<br />o Proficiency in designing Mule components (Mule ESB v3.0 and above, any point<br />Studio, flows, MEL, message modelling, pub-sub, routing, filtering, database,<br />exception handling, and API Management)<br />o Knowledge of message sources, processors and properties.<br />o Good knowledge of any point Connectors for business applications, Java and Groovy<br />(components and transformers), flow and Java debug<br />o Understand exception handling and unit testing like M Units with Mule ESB<br />o Experience with creation of web services and integrate them in workflow with<br />different ESB Platform.<br />o Understanding of and ability to invoke web services - REST (with RAML or JSON /<br />XML SOAP with WSDL)<br />o Ability to debug using tools like SoapUI, Postman<br />o Experience designing Mule ESB templates<br />o Knowledge of other API management tools like apigee and WSO2 will be added<br />advantage.</p><p>Skills:<br />o MuleSoft, EAI Solutions.<br />o Understanding of and ability to push or consume message from queue/topic.<br />o Excellent verbal and written communications skills as well as a winning team attitude<br />and strong people skills.<br /> </p><p>All your information will be kept confidential according to EEO guidelines.</p>",
+      "remote": false,
+      "url": "https://arbeitnow.com/view/mulesoft-developer-ateeca-178727",
+      "tags": [
+        "Information technology and services",
+        "information technology"
+      ],
+      "job_types": [
+        "Mid-senior",
+        "contract"
+      ],
+      "location": "Leicester",
+      "created_at": 1638006745
+    },
+    {
+      "slug": "murex-developer-ateeca-53841",
+      "company_name": "ateeca",
+      "title": "Murex Developer",
+      "description": "<p>Hands on experience in Murex Development</p><p>Proficient understanding on MXML &amp; Murex Datamart</p><p>Must have good communication skills</p><p>Good to have experience in Investment Banking or Capital Market Domain</p><p>All your information will be kept confidential according to EEO guidelines.</p>",
+      "remote": false,
+      "url": "https://arbeitnow.com/view/murex-developer-ateeca-53841",
+      "tags": [
+        "Information technology and services",
+        "information technology"
+      ],
+      "job_types": [
+        "Mid-senior",
+        "contract"
+      ],
+      "location": "London",
+      "created_at": 1638006745
+    },
+    {
+      "slug": "hote-de-caisse-hf-intermarche-261758",
+      "company_name": "Intermarché",
+      "title": "HÔTE DE CAISSE (H/F)",
+      "description": "<p>Rejoindre le Groupement Les Mousquetaires, c’est intégrer un acteur majeur de la grande distribution avec  7 enseignes. C’est aussi évoluer au sein d’un groupe singulier, présent sur 3 marchés (alimentaire, bricolage, mobilité), qui réunit 150 000 collaborateurs et compte plus de 3 000 chefs d’entreprise !</p><p>Intermarché, c’est l’enseigne historique du Groupement Les Mousquetaires. Son positionnement unique de Producteurs &amp; Commerçants fait sa force. S’appuyant sur le <a href=\"https://www.mousquetaires.com/nos-filiales/agromousquetaires/\">pôle agroalimentaire</a> du Groupement Les Mousquetaires, Intermarché propose des produits sains, accessibles et issus d’une production française et responsable. Agir pour placer le mieux manger à la portée de tous, c’est l’engagement qui anime les équipes au quotidien. Et ce modèle plaît ; Intermarché, enseigne solidaire et de proximité, figure parmi les enseignes de grande distribution préférées des Français qui bénéficient directement de ses 1 800 points de vente répartis sur l’ensemble du territoire.</p><p>Le magasin Intermarché de Pamiers la Cavalerie, pour poursuivre ses engagements et la valorisation des bons produits locaux et accessibles, renforce son équipe en recrutant <strong>un hôte de caisse H/F</strong>.</p><p>Sous la responsabilité de votre manager, vous avez un <strong>rôle clé dans la satisfaction de nos clients en étant disponible et bienveillant</strong>. En accueillant les clients au moment de leur passage en caisse, vous participez à leur <strong>fidélisation</strong>. Vous effectuez l’enregistrement des achats et réalisez l’encaissement dans le respect des procédures afin d’assurer le bon déroulement du passage en caisse. <strong>Vous êtes responsable de la bonne tenue de votre caisse dans un objectif d’amélioration de l’expérience client</strong>.</p><p><strong>Chez Intermarché, l’audace et l’envie d’entreprendre sont un véritable état d’esprit. Vous avez envie de vous investir et d’évoluer au sein d’une équipe de passionnés et qui saura reconnaître votre talent ?</strong> Dynamique et enthousiaste, vous avez un réel sens du contact client et grâce à vos qualités relationnelles, vous savez créer avec vos clients des <strong>liens de confiance et de proximité</strong> pour toujours leur apporter conseils et valeur ajoutée.</p><p><br /><strong>Nos parcours de développement des compétences vous aideront à évoluer rapidement.<br />Vivez votre passion et engagez-vous à nos côtés au sein d’une équipe humaine et conviviale !</strong></p>",
+      "remote": false,
+      "url": "https://arbeitnow.com/view/hote-de-caisse-hf-intermarche-261758",
+      "tags": [
+        "Food and beverages",
+        "other"
+      ],
+      "job_types": [
+        "Full time"
+      ],
+      "location": "Pamiers",
+      "created_at": 1638006745
+    },
+    {
+      "slug": "assistente-alla-clientela-kiabi-italia-300858",
+      "company_name": "Kiabi Italia",
+      "title": "ASSISTENTE ALLA CLIENTELA",
+      "description": "<p>Kiabi, azienda francese leader nella grande distribuzione tessile a piccoli prezzi e presente in Europa con più di 500 punti vendita e più di 9000 collaboratori, cerca per il proprio negozio di OLGIATE OLONA:</p><p> </p><p>ASSISTENTE ALLA CLIENTELA: assistenza al cliente, cassa e salottini prova, posizionamento e valorizzazione del prodotto.</p><p> </p><p>Studenti e studentesse appassionati di moda e con spirito commerciale, dinamici, sorridenti e orientati al lavoro di squadra. Richiediamo disponibilità a lavorare il sabato e la domenica su turni.</p><p>Preferibilmente con una prima esperienza nella vendita.</p><p>Kiabi offre:</p><p>- Un inserimento e un percorso di formazione</p><p>- Un ambiente di lavoro giovane e stimolante</p><p> Sede di lavoro: OLGIATE OLONA</p><p>Tipo di contratto: part-time CTD SOSTITUZIONE MALATTIA.</p><p> </p>",
+      "remote": false,
+      "url": "https://arbeitnow.com/view/assistente-alla-clientela-kiabi-italia-300858",
+      "tags": [
+        "Apparel and fashion",
+        "sales"
+      ],
+      "job_types": [
+        "Entry",
+        "part time"
+      ],
+      "location": "Olgiate Olona",
+      "created_at": 1638006722
+    },
+    {
+      "slug": "sprzedawcamagazynier-jysk-poznan-komorniki-3800-pln-jysk-435302",
+      "company_name": "JYSK",
+      "title": "Sprzedawca/Magazynier JYSK Poznań Komorniki (3800 pln)",
+      "description": "",
+      "remote": false,
+      "url": "https://arbeitnow.com/view/sprzedawcamagazynier-jysk-poznan-komorniki-3800-pln-jysk-435302",
+      "tags": [
+        "Retail",
+        "customer service"
+      ],
+      "job_types": [
+        "Associate",
+        "full time"
+      ],
+      "location": "Poznań",
+      "created_at": 1638006722
+    }
+  ],
+  "links": {
+    "first": "https://arbeitnow.com/api/job-board-api?page=1",
+    "last": null,
+    "prev": null,
+    "next": "https://arbeitnow.com/api/job-board-api?page=2"
+  },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "path": "https://arbeitnow.com/api/job-board-api",
+    "per_page": 100,
+    "to": 100,
+    "terms": "This is a free public API for jobs, please do not abuse. I would appreciate linking back to the site. By using the API, you agree to the terms of service present on Arbeitnow.com",
+    "info": "Jobs are updated every hour and order by the `created_at` timestamp. Use `?page=` to paginate. Read more information here: https://arbeitnow.com/blog/job-board-api"
+  }

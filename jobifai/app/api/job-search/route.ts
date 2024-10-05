@@ -1,40 +1,63 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import axios from 'axios';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+interface Job {
+  slug: string;
+  company_name: string;
+  title: string;
+  description: string;
+  remote: boolean;
+  url: string;
+  tags: string[];
+  job_types: string[];
+  location: string;
+  created_at: number;
+}
 
-export async function GET(req: NextRequest) {
-  const { userId } = auth();
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+async function fetchJobs(keyword: string, location: string) {
+  const url = `https://arbeitnow.com/api/job-board-api`;
+  
+  try {
+    const { data } = await axios.get(url);
+    const jobs: Job[] = data.data;
+
+    // Filter jobs based on keyword and location
+    const filteredJobs = jobs.filter(job => 
+      (job.title.toLowerCase().includes(keyword.toLowerCase()) || 
+       job.description.toLowerCase().includes(keyword.toLowerCase())) &&
+      (location === '' || job.location.toLowerCase().includes(location.toLowerCase()))
+    );
+
+    return filteredJobs.map(job => ({
+      title: job.title,
+      company: job.company_name,
+      location: job.location,
+      link: job.url,
+      remote: job.remote,
+      jobTypes: job.job_types,
+      tags: job.tags
+    }));
+  } catch (error) {
+    console.error('Error fetching jobs:', error);
+    throw error;
   }
+}
 
-  const { searchParams } = new URL(req.url);
-  const query = searchParams.get('query');
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const keyword = searchParams.get('keyword');
   const location = searchParams.get('location');
 
+  if (!keyword) {
+    return NextResponse.json({ error: 'Keyword is required' }, { status: 400 });
+  }
+
   try {
-    let jobQuery = supabase.from('job_postings').select('*');
-
-    if (query) {
-      jobQuery = jobQuery.ilike('title', `%${query}%`);
-    }
-
-    if (location) {
-      jobQuery = jobQuery.ilike('location', `%${location}%`);
-    }
-
-    const { data, error } = await jobQuery;
-
-    if (error) throw error;
-
-    return NextResponse.json({ jobs: data });
+    const jobs = await fetchJobs(keyword, location || '');
+    console.log('Jobs fetched:', jobs); // Add this line
+    return NextResponse.json(jobs);
   } catch (error) {
     console.error('Error in job search:', error);
-    return NextResponse.json({ error: 'Failed to search jobs' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch jobs' }, { status: 500 });
   }
 }
