@@ -1,80 +1,106 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// Initialize Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+    throw new Error('Missing Supabase environment variables');
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+        autoRefreshToken: false,
+        persistSession: false
+    }
+});
+
+// Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 export async function POST(req: NextRequest) {
-    const { userId } = auth();
-    
-    if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-  
-    // Use userId from Clerk directly for Supabase operations
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('clerk_id', userId);  // Assuming you have a column to store Clerk user IDs
+    const { userId: clerkId } = auth();
 
-  try {
-    const { message, chatHistory, jobPostingId } = await req.json();
-
-    // Fetch job posting details if jobPostingId is provided
-    let jobDetails = null;
-    if (jobPostingId) {
-      const { data, error } = await supabase
-        .from('job_postings')
-        .select('*')
-        .eq('id', jobPostingId)
-        .single();
-
-      if (error) throw error;
-      jobDetails = data;
+    if (!clerkId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Prepare the chat history and context for Gemini
-    const chatContext = `You are an AI assistant for JobifAI, a job search platform. ${
-      jobDetails ? `The user is currently looking at a job posting for ${jobDetails.title} at ${jobDetails.company}.` : ''
-    }`;
+    const { message, supabaseUserId } = await req.json();
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const chat = model.startChat({
-      history: [
-        { role: "system", parts: chatContext },
-        ...chatHistory.map((msg: { role: string; content: string }) => ({
-          role: msg.role,
-          parts: msg.content,
-        })),
-      ],
-    });
+    if (!supabaseUserId) {
+        console.log("Supabase user ID not found in request");
+        return NextResponse.json({ error: 'Supabase user ID not found in request' }, { status: 400 });
+    }
 
-    // Generate a response
-    const result = await chat.sendMessage(message);
-    const response = await result.response;
-    const aiResponse = response.text();
+    try {
+        // Fetch chat history from Supabase
+        const { data: chatHistory, error: fetchError } = await supabase
+            .from('chat_histories')
+            .select('message, response')
+            .eq('user_id', supabaseUserId)
+            .order('timestamp', { ascending: true })
+            .limit(10);
 
-    // Save the chat history to Supabase
-    const { data, error } = await supabase
-      .from('chat_histories')
-      .insert({
-        user_id: userId,
-        message: message,
-        response: aiResponse,
-        timestamp: new Date().toISOString(),
-      });
+        if (fetchError) {
+            console.error('Error fetching chat history:', fetchError);
+            return NextResponse.json({ error: 'Error fetching chat history' }, { status: 500 });
+        }
 
-    if (error) throw error;
+        // Prepare chat history for Gemini
+        const history = chatHistory?.map(entry => [
+            { role: "user", parts: [{ text: entry.message }] },
+            { role: "model", parts: [{ text: entry.response }] }
+        ]).flat() || [];
 
-    return NextResponse.json({ aiResponse });
-  } catch (error) {
-    console.error('Error in chat:', error);
-    return NextResponse.json({ error: 'Failed to process chat' }, { status: 500 });
-  }
+        // Start chat with history
+        const chat = model.startChat({
+            history: history,
+            // generationConfig: {
+            //     maxOutputTokens: 1000,
+            // },
+        });
+
+        // Send message and get stream
+        const result = await chat.sendMessageStream(message);
+
+        // Prepare the stream response
+        const stream = new ReadableStream({
+            async start(controller) {
+                let fullResponse = '';
+                for await (const chunk of result.stream) {
+                    const chunkText = chunk.text();
+                    fullResponse += chunkText;
+                    controller.enqueue(chunkText);
+                }
+                controller.close();
+
+                // Save the message and response to Supabase
+                const { error: insertError } = await supabase
+                    .from('chat_histories')
+                    .insert({
+                        user_id: supabaseUserId,
+                        message: message,
+                        response: fullResponse
+                    });
+
+                if (insertError) {
+                    console.error('Error saving chat history:', insertError);
+                }
+            }
+        });
+
+        return new NextResponse(stream, {
+            headers: {
+                'Content-Type': 'text/plain',
+            },
+        });
+
+    } catch (error) {
+        console.error('Unexpected error:', error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
 }

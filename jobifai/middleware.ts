@@ -4,24 +4,45 @@ import { NextResponse } from "next/server";
 const isProtectedRoute = createRouteMatcher(["/"]);
 
 export default clerkMiddleware(async (auth, req) => {
-    const { userId, redirectToSignIn } = auth();
+    const { userId, getToken, redirectToSignIn } = auth();
 
-    // If the user is not signed in and the route is protected, redirect to sign in
     if (!userId && isProtectedRoute(req)) {
         return redirectToSignIn({ returnBackUrl: "/" });
     }
 
     if (userId && isProtectedRoute(req)) {
-        return NextResponse.next();
+        try {
+            const token = await getToken();
+            const response = await fetch(`${req.nextUrl.origin}/api/auth`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+            });
 
+            if (!response.ok) {
+                console.error('Error from /api/auth:', await response.text());
+                // You might want to handle this error case differently
+                return NextResponse.next();
+            }
+
+            const data = await response.json();
+            console.log('User data:', data);
+
+            // You can do something with the user data here if needed
+
+        } catch (error) {
+            console.error('Error calling /api/auth:', error);
+        }
     }
+
+    return NextResponse.next();
 });
 
 export const config = {
-  matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run for API routes
-    '/(api|trpc)(.*)',
-  ],
+    matcher: [
+        '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+        '/(api|trpc)(.*)',
+    ],
 };

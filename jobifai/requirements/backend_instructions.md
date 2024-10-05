@@ -519,3 +519,88 @@ Call a read-only Postgres function
 ```
 const { data, error } = await supabase.rpc('hello_world')
 ```
+
+
+## Gemini Chat
+Generates a streamed response from the model given an input GenerateContentRequest.
+
+Endpoint
+post
+https://generativelanguage.googleapis.com/v1beta/{model=models/*}:streamGenerateContent
+
+Path parameters
+model
+string
+Required. The name of the Model to use for generating the completion.
+
+Format: name=models/{model}. It takes the form models/{model}.
+
+Request body
+The request body contains data with the following structure:
+
+Fields
+contents[]
+object (Content)
+Required. The content of the current conversation with the model.
+
+For single-turn queries, this is a single instance. For multi-turn queries like chat, this is a repeated field that contains the conversation history and the latest request.
+
+tools[]
+object (Tool)
+Optional. A list of Tools the Model may use to generate the next response.
+
+A Tool is a piece of code that enables the system to interact with external systems to perform an action, or set of actions, outside of knowledge and scope of the Model. Supported Tools are Function and codeExecution. Refer to the Function calling and the Code execution guides to learn more.
+
+toolConfig
+object (ToolConfig)
+Optional. Tool configuration for any Tool specified in the request. Refer to the Function calling guide for a usage example.
+
+safetySettings[]
+object (SafetySetting)
+Optional. A list of unique SafetySetting instances for blocking unsafe content.
+
+This will be enforced on the GenerateContentRequest.contents and GenerateContentResponse.candidates. There should not be more than one setting for each SafetyCategory type. The API will block any contents and responses that fail to meet the thresholds set by these settings. This list overrides the default settings for each SafetyCategory specified in the safetySettings. If there is no SafetySetting for a given SafetyCategory provided in the list, the API will use the default safety setting for that category. Harm categories HARM_CATEGORY_HATE_SPEECH, HARM_CATEGORY_SEXUALLY_EXPLICIT, HARM_CATEGORY_DANGEROUS_CONTENT, HARM_CATEGORY_HARASSMENT are supported. Refer to the guide for detailed information on available safety settings. Also refer to the Safety guidance to learn how to incorporate safety considerations in your AI applications.
+
+systemInstruction
+object (Content)
+Optional. Developer set system instruction(s). Currently, text only.
+
+generationConfig
+object (GenerationConfig)
+Optional. Configuration options for model generation and outputs.
+
+cachedContent
+string
+Optional. The name of the content cached to use as context to serve the prediction. Format: cachedContents/{cachedContent}
+
+Example request
+```
+// Make sure to include these imports:
+// import { GoogleGenerativeAI } from "@google/generative-ai";
+const genAI = new GoogleGenerativeAI(process.env.API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const chat = model.startChat({
+  history: [
+    {
+      role: "user",
+      parts: [{ text: "Hello" }],
+    },
+    {
+      role: "model",
+      parts: [{ text: "Great to meet you. What would you like to know?" }],
+    },
+  ],
+});
+let result = await chat.sendMessageStream("I have 2 dogs in my house.");
+for await (const chunk of result.stream) {
+  const chunkText = chunk.text();
+  process.stdout.write(chunkText);
+}
+result = await chat.sendMessageStream("How many paws are in my house?");
+for await (const chunk of result.stream) {
+  const chunkText = chunk.text();
+  process.stdout.write(chunkText);
+}
+```
+
+If successful, the response body contains a stream of GenerateContentResponse instances.
