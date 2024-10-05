@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
+import Link from 'next/link';
 
 interface JobApplication {
   id: string;
@@ -43,6 +44,7 @@ export function ApplicationTracker() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applied Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -53,6 +55,13 @@ export function ApplicationTracker() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{app.status}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {new Date(app.applied_date).toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <Link href={`/jobs/${app.id}`}>
+                    <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded">
+                      View
+                    </button>
+                  </Link>
                 </td>
               </tr>
             ))}

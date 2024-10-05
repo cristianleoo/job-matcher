@@ -52,7 +52,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET(request: Request) {
+export const GET = async (request: Request) => {
   const { userId: clerkUserId } = auth();
   if (!clerkUserId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -87,5 +87,37 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('Error fetching jobs:', error);
     return NextResponse.json({ error: 'Failed to fetch jobs' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const { userId: clerkUserId } = auth();
+  if (!clerkUserId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const url = new URL(request.url);
+  const jobId = url.searchParams.get('jobId');
+  const supabaseUserId = url.searchParams.get('supabaseUserId');
+
+  if (!jobId || !supabaseUserId) {
+    return NextResponse.json({ error: 'Job ID and Supabase user ID are required' }, { status: 400 });
+  }
+
+  try {
+    const { error } = await supabase
+      .from('job_applications')
+      .delete()
+      .eq('id', jobId)
+      .eq('user_id', supabaseUserId);
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json({ message: 'Job application deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting job:', error);
+    return NextResponse.json({ error: 'Failed to delete job application' }, { status: 500 });
   }
 }
