@@ -1,15 +1,22 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useUser, useAuth } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PlusCircle, MinusCircle, Upload, X } from 'lucide-react';
 import { useUserStore } from '@/lib/userStore';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export function UserProfileForm() {
   const { user } = useUser();
+  const { userId: clerkId } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState({
     firstName: '',
@@ -160,12 +167,271 @@ export function UserProfileForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Here you would typically send the profile data to your backend
-    // You'll need to handle file upload separately, possibly using FormData
-    console.log('Profile data:', profile);
-    console.log('Resume file:', resume);
-    alert('Profile updated successfully!');
+    
+    try {
+      // Update user information
+      const { error: userError } = await supabase
+        .from('users')
+        .upsert({
+          id: supabaseUserId,
+          clerk_id: clerkId,
+          email: profile.email,
+          full_name: `${profile.firstName} ${profile.lastName}`,
+          phone: profile.phone,
+          location: profile.location,
+          linkedin_profile: profile.linkedinProfile,
+          github_profile: profile.githubProfile,
+          personal_website: profile.personalWebsite,
+        });
+
+      if (userError) throw userError;
+
+
+      // Update skills
+      const { error: skillsError } = await supabase
+        .from('user_skills')
+        .delete()
+        .eq('user_id', supabaseUserId);
+
+      if (skillsError) throw skillsError;
+
+      for (const skill of profile.skills) {
+        const { data: skillData, error: skillInsertError } = await supabase
+          .from('skills')
+          .upsert({ name: skill }, { onConflict: 'name' })
+          .select('id')
+          .single();
+
+        if (skillInsertError) throw skillInsertError;
+
+        const { error: userSkillError } = await supabase
+          .from('user_skills')
+          .insert({
+            user_id: supabaseUserId,
+            skill_id: skillData.id,
+            proficiency_level: 3, // Default level, you might want to add this to your form
+          });
+
+        if (userSkillError) throw userSkillError;
+      }
+
+      console.log("skills updated")
+
+      // Only update job preferences if they exist
+      if (profile.jobPreferences && Object.keys(profile.jobPreferences).some(key => 
+        profile.jobPreferences[key as keyof typeof profile.jobPreferences]
+      )) {
+        const { error: jobPrefError } = await supabase
+          .from('job_preferences')
+          .upsert({
+            user_id: supabaseUserId,
+            desired_role: profile.jobPreferences.desiredPosition,
+            desired_industry: profile.jobPreferences.desiredIndustry,
+            min_salary: parseInt(profile.jobPreferences.desiredSalary),
+            remote_preference: profile.jobPreferences.remotePreference,
+          });
+
+        if (jobPrefError) throw jobPrefError;
+      }
+
+      console.log("job preferences updated")
+
+      // Update work experience
+      await supabase
+        .from('work_experience')
+        .delete()
+        .eq('user_id', supabaseUserId);
+
+      for (const exp of profile.workExperience) {
+        const { error: workExpError } = await supabase
+          .from('work_experience')
+          .insert({
+            user_id: supabaseUserId,
+            company: exp.company,
+            position: exp.position,
+            start_date: exp.startDate,
+            end_date: exp.endDate,
+            description: exp.description,
+          });
+
+        if (workExpError) throw workExpError;
+      }
+
+      console.log("work experience updated")
+
+      // Update education
+      await supabase
+        .from('education')
+        .delete()
+        .eq('user_id', supabaseUserId);
+
+      for (const edu of profile.education) {
+        const { error: eduError } = await supabase
+          .from('education')
+          .insert({
+            user_id: supabaseUserId,
+            institution: edu.institution,
+            degree: edu.degree,
+            field_of_study: edu.fieldOfStudy,
+            graduation_date: edu.graduationDate,
+          });
+
+        if (eduError) throw eduError;
+      }
+
+      console.log("education updated")
+
+      // Update portfolio links
+      await supabase
+        .from('portfolio_links')
+        .delete()
+        .eq('user_id', supabaseUserId);
+
+      for (const link of profile.portfolioLinks) {
+        const { error: linkError } = await supabase
+          .from('portfolio_links')
+          .insert({
+            user_id: supabaseUserId,
+            url: link,
+          });
+
+        if (linkError) throw linkError;
+      }
+
+      console.log("portfolio links updated")
+
+      // Handle resume upload if a new file is selected
+      if (resume) {
+        const fileName = `public/${supabaseUserId}_resume.pdf`;
+        const { error: uploadError } = await supabase.storage
+          .from('user_resumes')
+          .upload(fileName, resume, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Save resume reference in the resumes table
+        const { error: resumeError } = await supabase
+          .from('resumes')
+          .upsert({
+            user_id: supabaseUserId,
+            title: fileName,
+            content: "",
+            version: 1, // You might want to implement versioning logic
+          });
+
+        if (resumeError) throw resumeError;
+      }
+
+      console.log("resume updated")
+
+      alert('Profile updated successfully!');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('There was an error updating your profile. Please try again.');
+    }
   };
+
+  // Add this useEffect hook to fetch data when the component mounts
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!supabaseUserId) return;
+
+      try {
+        // Fetch user data
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', supabaseUserId)
+          .single();
+
+        if (userError) throw userError;
+
+        // Fetch skills
+        const { data: skillsData, error: skillsError } = await supabase
+          .from('user_skills')
+          .select('skills(name)')
+          .eq('user_id', supabaseUserId);
+
+        if (skillsError) throw skillsError;
+
+        // Fetch job preferences
+        const { data: jobPrefData, error: jobPrefError } = await supabase
+          .from('job_preferences')
+          .select('*')
+          .eq('user_id', supabaseUserId)
+          .single();
+
+        if (jobPrefError && jobPrefError.code !== 'PGRST116') throw jobPrefError;
+
+        // Fetch work experience
+        const { data: workExpData, error: workExpError } = await supabase
+          .from('work_experience')
+          .select('*')
+          .eq('user_id', supabaseUserId);
+
+        if (workExpError) throw workExpError;
+
+        // Fetch education
+        const { data: educationData, error: educationError } = await supabase
+          .from('education')
+          .select('*')
+          .eq('user_id', supabaseUserId);
+
+        if (educationError) throw educationError;
+
+        // Fetch portfolio links
+        const { data: portfolioData, error: portfolioError } = await supabase
+          .from('portfolio_links')
+          .select('*')
+          .eq('user_id', supabaseUserId);
+
+        if (portfolioError) throw portfolioError;
+
+        // Update the profile state with fetched data
+        setProfile(prevProfile => ({
+          ...prevProfile,
+          firstName: userData.full_name.split(' ')[0] || prevProfile.firstName,
+          lastName: userData.full_name.split(' ').slice(1).join(' ') || prevProfile.lastName,
+          email: userData.email || prevProfile.email,
+          phone: userData.phone || '',
+          location: userData.location || '',
+          linkedinProfile: userData.linkedin_profile || '',
+          githubProfile: userData.github_profile || '',
+          personalWebsite: userData.personal_website || '',
+          skills: skillsData.map(skill => skill.skills.name) || [''],
+          workExperience: workExpData.map(exp => ({
+            company: exp.company,
+            position: exp.position,
+            startDate: exp.start_date,
+            endDate: exp.end_date,
+            description: exp.description,
+          })) || [{ company: '', position: '', startDate: '', endDate: '', description: '' }],
+          education: educationData.map(edu => ({
+            institution: edu.institution,
+            degree: edu.degree,
+            fieldOfStudy: edu.field_of_study,
+            graduationDate: edu.graduation_date,
+          })) || [{ institution: '', degree: '', fieldOfStudy: '', graduationDate: '' }],
+          portfolioLinks: portfolioData.map(link => link.url) || [''],
+          jobPreferences: {
+            desiredPosition: jobPrefData?.desired_role || '',
+            desiredIndustry: jobPrefData?.desired_industry || '',
+            desiredSalary: jobPrefData?.min_salary?.toString() || '',
+            remotePreference: jobPrefData?.remote_preference || '',
+          },
+        }));
+
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        alert('There was an error loading your profile data. Please try refreshing the page.');
+      }
+    };
+
+    fetchUserData();
+  }, [supabaseUserId]);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">

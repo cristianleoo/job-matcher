@@ -57,8 +57,8 @@ export async function POST(req: NextRequest) {
           {
             "company": "",
             "position": "",
-            "startDate": "",
-            "endDate": "",
+            "startDate": "YYYY-MM-DD",
+            "endDate": "YYYY-MM-DD",
             "description": ""
           }
         ],
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
             "institution": "",
             "degree": "",
             "fieldOfStudy": "",
-            "graduationDate": ""
+            "graduationDate": "YYYY-MM-DD"
           }
         ],
         "portfolioLinks": ["link1", "link2", ...],
@@ -83,6 +83,8 @@ export async function POST(req: NextRequest) {
       }
 
       Ensure all fields are filled with the available information. Use empty strings for missing information. For arrays, provide an empty array if no information is found. The output should be valid JSON without any additional text or formatting.
+
+      All dates should be in the format YYYY-MM-DD. If a specific day is not provided in the resume, use the first day of the month (e.g., "2023-09-01"). If only a year is provided, use January 1st of that year (e.g., "2023-01-01").
 
       Resume text:
       ${pdfText}
