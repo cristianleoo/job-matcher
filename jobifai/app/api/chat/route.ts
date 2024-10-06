@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { message, supabaseUserId, context, chatId, resumeContent } = await req.json();
+    const { message, supabaseUserId, context, chatId } = await req.json();
 
     if (!supabaseUserId) {
         console.log("Supabase user ID not found in request");
@@ -42,17 +42,12 @@ export async function POST(req: NextRequest) {
     try {
         let chatData;
         let resumeContent = '';
+        const currentChatId = chatId || uuidv4(); // Use existing chatId or create a new one
 
-        if (chatId) {
-            console.log(`Fetching chat history for chatId: ${chatId}`);
-            chatData = await getChatHistory(supabaseUserId, chatId);
-            if (!chatData) {
-                console.error(`Failed to fetch chat history for chatId: ${chatId}`);
-                return NextResponse.json({ error: 'Failed to fetch chat history' }, { status: 500 });
-            }
-            console.log('Fetched chat data:', JSON.stringify(chatData).substring(0, 100) + '...');
-        } else {
-            console.log('No chatId provided, creating new chat data');
+        console.log(`Fetching or creating chat history for chatId: ${currentChatId}`);
+        chatData = await getChatHistory(supabaseUserId, currentChatId);
+        if (!chatData) {
+            console.log(`No existing chat found for chatId: ${currentChatId}. Creating a new chat.`);
             chatData = { messages: [] };
         }
 
@@ -103,7 +98,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Prepare chat history for Gemini
-        const history = chatData?.messages?.map((entry: { role: string; content: string }) => ({
+        const history = chatData.messages?.map((entry: { role: string; content: string }) => ({
             role: entry.role === "user" ? "user" : "model",
             parts: [{ text: entry.content }]
         })) || [];
@@ -126,7 +121,7 @@ export async function POST(req: NextRequest) {
             User question: ${message}`
             : message;
 
-        console.log("Sending message to AI:", fullMessage.substring(0, 200) + '...'); // Log the first 200 characters
+        console.log("Sending message to AI:", fullMessage.substring(0, 200) + '...');
 
         // Send message and get stream
         const result = await chat.sendMessageStream(fullMessage);
@@ -145,23 +140,21 @@ export async function POST(req: NextRequest) {
                 // Sanitize the response before saving
                 const sanitizedResponse = sanitizeUnicode(fullResponse);
                 // Update chatData with new message and response
-                chatData?.messages?.push(
+                chatData.messages.push(
                     { role: 'user', content: message },
                     { role: 'assistant', content: sanitizedResponse }
                 );
 
                 // Save the updated chat history
-                const newChatId = chatId || uuidv4();
-                const title = chatData?.messages?.[0]?.content?.substring(0, 50) || 'New Chat';
-                if (chatData) {
-                    await saveChatHistory(supabaseUserId, newChatId, title, chatData);
-                }
+                const title = chatData.messages[0]?.content?.substring(0, 50) || 'New Chat';
+                await saveChatHistory(supabaseUserId, currentChatId, title, chatData);
             }
         });
 
         return new NextResponse(stream, {
             headers: {
                 'Content-Type': 'text/plain',
+                'X-Chat-ID': currentChatId,
             },
         });
 

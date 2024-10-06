@@ -138,6 +138,25 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
           throw new Error('Failed to get AI response');
         }
 
+        const newChatId = response.headers.get('X-Chat-ID');
+        if (newChatId && newChatId !== activeChat) {
+          setActiveChat(newChatId);
+          setChats(prevChats => {
+            const existingChatIndex = prevChats.findIndex(chat => chat.id === newChatId);
+            if (existingChatIndex !== -1) {
+              // Update existing chat
+              return prevChats.map((chat, index) => 
+                index === existingChatIndex 
+                  ? { ...chat, messages: [...chat.messages, userMessage] }
+                  : chat
+              );
+            } else {
+              // Add new chat
+              return [...prevChats, { id: newChatId, title: "New Chat", messages: [userMessage] }];
+            }
+          });
+        }
+
         console.log("API response received");
         const reader = response.body?.getReader();
         if (!reader) {

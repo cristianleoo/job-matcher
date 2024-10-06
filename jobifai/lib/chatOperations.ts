@@ -17,6 +17,7 @@ export async function saveChatHistory(userId: string, chatId: string, title: str
     .from('chat-histories')
     .upload(bucketPath, JSON.stringify(chatData), {
       contentType: 'application/json',
+      upsert: true,
     });
 
   if (uploadError) {
