@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/cjs/styles/prism';
-import { getChatHistory } from '@/lib/chatOperations';
+import { getChatHistory, getAllChatHistories } from '@/lib/chatOperations';
 
 interface Chat {
   id: string;
@@ -55,19 +55,28 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
   }, [userId, setSupabaseUserId]);
 
   useEffect(() => {
-    const loadChat = async () => {
-      if (chatId && supabaseUserId) {
-        const chatData = await getChatHistory(supabaseUserId, chatId);
-        if (chatData) {
-          setChats([{ id: chatId, title: "Loaded Chat", messages: chatData.messages }]);
-          setActiveChat(chatId);
+    const loadChats = async () => {
+      if (supabaseUserId) {
+        const allChats = await getAllChatHistories(supabaseUserId);
+        if (allChats) {
+          setChats(allChats);
+          if (chatId) {
+            const chatData = await getChatHistory(supabaseUserId, chatId);
+            if (chatData) {
+              setActiveChat(chatId);
+            }
+          } else if (allChats.length > 0) {
+            setActiveChat(allChats[0].id);
+          } else {
+            createInitialChat();
+          }
+        } else {
+          createInitialChat();
         }
-      } else {
-        createInitialChat();
       }
     };
 
-    loadChat();
+    loadChats();
   }, [chatId, supabaseUserId]);
 
   const createInitialChat = () => {
@@ -191,20 +200,18 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      <div className="w-64 bg-gray-100 p-4 overflow-y-auto">
-        <ChatSidebar
-          chats={chats}
-          activeChat={activeChat}
-          onSelectChat={setActiveChat}
-          onNewChat={handleNewChat}
-          onDeleteChat={handleDeleteChat}
-        />
-      </div>
+      <ChatSidebar
+        chats={chats}
+        activeChat={activeChat}
+        onSelectChat={setActiveChat}
+        onNewChat={handleNewChat}
+        onDeleteChat={handleDeleteChat}
+      />
       <div className="flex-grow flex flex-col h-full overflow-hidden">
         {activeChat ? (
           <>
             <div className="flex-grow overflow-y-auto p-4 space-y-4">
-              {chats.find(chat => chat.id === activeChat)?.messages.map((message, index) => (
+              {chats.find(chat => chat.id === activeChat)?.messages?.map((message, index) => (
                 <div
                   key={`${activeChat}-${index}`}
                   className={`p-2 rounded-lg flex items-start ${

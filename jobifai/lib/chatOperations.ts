@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { ChatHistory } from './types'; // Add this import
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -67,4 +68,19 @@ export async function getChatHistory(userId: string, chatId: string): Promise<Ch
 
   const chatData = JSON.parse(await fileData.text());
   return chatData;
+}
+
+export async function getAllChatHistories(userId: string): Promise<ChatHistory[] | null> {
+  const { data, error } = await supabase
+    .from('chat_histories')
+    .select('id, title, timestamp, bucket_path')
+    .eq('user_id', userId)
+    .order('timestamp', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching all chat histories:', error);
+    return null;
+  }
+
+  return data;
 }
