@@ -5,10 +5,11 @@ import { useUser, useAuth } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, MinusCircle, Upload, X, MessageSquare } from 'lucide-react';
+import { PlusCircle, MinusCircle, Upload, X, MessageSquare, Download } from 'lucide-react';
 import { useUserStore } from '@/lib/userStore';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
+import React from 'react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -442,6 +443,30 @@ export function UserProfileForm() {
     router.push('/chat?context=resume');
   };
 
+  const handleDownloadResume = async () => {
+    if (!supabaseUserId || !existingResume) return;
+
+    try {
+      const { data, error } = await supabase.storage
+        .from('user_resumes')
+        .download(`public/${supabaseUserId}_resume.pdf`);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'resume.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading resume:', error);
+      alert('There was an error downloading your resume. Please try again.');
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Resume upload section */}
@@ -466,7 +491,7 @@ export function UserProfileForm() {
           </Button>
           {(resume || existingResume) && (
             <div className="flex items-center gap-2">
-              <span>{resume ? resume.name : existingResume}</span>
+              <span>Resume loaded successfully</span>
               <Button
                 type="button"
                 onClick={handleRemoveFile}
@@ -478,14 +503,24 @@ export function UserProfileForm() {
             </div>
           )}
           {existingResume && (
-            <Button
-              type="button"
-              onClick={handleChatWithResume}
-              className="flex items-center gap-2"
-            >
-              <MessageSquare className="h-4 w-4" />
-              Chat with Resume
-            </Button>
+            <>
+              <Button
+                type="button"
+                onClick={handleDownloadResume}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download Resume
+              </Button>
+              <Button
+                type="button"
+                onClick={handleChatWithResume}
+                className="flex items-center gap-2"
+              >
+                <MessageSquare className="h-4 w-4" />
+                Chat with Resume
+              </Button>
+            </>
           )}
         </div>
       </div>

@@ -9,12 +9,20 @@ import { useUserStore } from '@/lib/userStore';
 import { ChatSidebar } from "@/components/chat-sidebar";
 import { v4 as uuidv4 } from 'uuid';
 import React from "react";
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface Chat {
   id: string;
   title: string;
   messages: { role: string; content: string }[];
 }
+
+type Message = {
+  role: 'user' | 'assistant';
+  content: string;
+};
 
 export function AIAssistant() {
   const { userId } = useAuth();
@@ -229,7 +237,30 @@ export function AIAssistant() {
                   ) : (
                     <User className="w-8 h-8 p-1 rounded-full bg-gray-300 mr-2 flex-shrink-0" />
                   )}
-                  <div className="flex-grow">{message.content}</div>
+                  <div className="flex-grow">
+                    <ReactMarkdown
+                      components={{
+                        code({node, inline, className, children, ...props}: any) {
+                          const match = /language-(\w+)/.exec(className || '')
+                          return !inline && match ? (
+                            <SyntaxHighlighter
+                              {...props}
+                              children={String(children).replace(/\n$/, '')}
+                              style={tomorrow}
+                              language={match[1]}
+                              PreTag="div"
+                            />
+                          ) : (
+                            <code {...props} className={className}>
+                              {children}
+                            </code>
+                          )
+                        }
+                      }}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               ))}
               {streamingMessage && (
@@ -237,7 +268,30 @@ export function AIAssistant() {
                   <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white mr-2 flex-shrink-0">
                     AI
                   </div>
-                  <div className="flex-grow">{streamingMessage}</div>
+                  <div className="flex-grow">
+                    <ReactMarkdown
+                      components={{
+                        code({node, inline, className, children, ...props}: any) {
+                          const match = /language-(\w+)/.exec(className || '')
+                          return !inline && match ? (
+                            <SyntaxHighlighter
+                              {...props}
+                              children={String(children).replace(/\n$/, '')}
+                              style={tomorrow}
+                              language={match[1]}
+                              PreTag="div"
+                            />
+                          ) : (
+                            <code {...props} className={className}>
+                              {children}
+                            </code>
+                          )
+                        }
+                      }}
+                    >
+                      {streamingMessage}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               )}
               <div ref={messagesEndRef} />
