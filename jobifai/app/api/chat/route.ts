@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
+import { v4 as uuidv4 } from 'uuid';
+import { saveChatHistory, getChatHistory } from '@/lib/chatOperations';
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -29,7 +31,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { message, supabaseUserId, context } = await req.json();
+    const { message, supabaseUserId, context, chatId } = await req.json();
 
     if (!supabaseUserId) {
         console.log("Supabase user ID not found in request");
@@ -37,8 +39,14 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        let chatHistory;
+        let chatData;
         let resumeContent = '';
+
+        if (chatId) {
+            chatData = await getChatHistory(supabaseUserId, chatId);
+        } else {
+            chatData = { messages: [] };
+        }
 
         if (context === 'resume') {
             // Fetch resume content
@@ -54,52 +62,20 @@ export async function POST(req: NextRequest) {
             }
 
             resumeContent = resumeData?.content || '';
-
-            // Fetch chat history specific to resume context
-            const { data: resumeChatHistory, error: fetchError } = await supabase
-                .from('chat_histories')
-                .select('message, response')
-                .eq('user_id', supabaseUserId)
-                .eq('context', 'resume')
-                .order('timestamp', { ascending: true })
-                .limit(10);
-
-            if (fetchError) {
-                console.error('Error fetching resume chat history:', fetchError);
-                return NextResponse.json({ error: 'Error fetching resume chat history' }, { status: 500 });
-            }
-
-            chatHistory = resumeChatHistory;
-        } else {
-            // Fetch general chat history
-            const { data: generalChatHistory, error: fetchError } = await supabase
-                .from('chat_histories')
-                .select('message, response')
-                .eq('user_id', supabaseUserId)
-                .is('context', null)
-                .order('timestamp', { ascending: true })
-                .limit(10);
-
-            if (fetchError) {
-                console.error('Error fetching chat history:', fetchError);
-                return NextResponse.json({ error: 'Error fetching chat history' }, { status: 500 });
-            }
-
-            chatHistory = generalChatHistory;
         }
 
         // Prepare chat history for Gemini
-        const history = chatHistory?.map(entry => [
-            { role: "user", parts: [{ text: entry.message }] },
-            { role: "model", parts: [{ text: entry.response }] }
-        ]).flat() || [];
+        const history = chatData ? chatData.messages.map((entry: { role: string; content: string }) => {
+            if (entry.role === "user") {
+                return { role: "user", parts: [{ text: entry.content }] };
+            } else {
+                return { role: "model", parts: [{ text: entry.content }] };
+            }
+        }) : [];
 
         // Start chat with history and resume content if applicable
         const chat = model.startChat({
             history: history,
-            // generationConfig: {
-            //     maxOutputTokens: 1000,
-            // },
         });
 
         // If it's a resume context, add the resume content to the message
@@ -124,18 +100,19 @@ export async function POST(req: NextRequest) {
                 // Sanitize the response before saving
                 const sanitizedResponse = sanitizeUnicode(fullResponse);
 
-                // Save the message and response to Supabase
-                const { error: insertError } = await supabase
-                    .from('chat_histories')
-                    .insert({
-                        user_id: supabaseUserId,
-                        message: message,
-                        response: sanitizedResponse,
-                        context: context === 'resume' ? 'resume' : null
+                // Update chatData with new message and response
+                if (chatData) {
+                    chatData.messages.push({
+                        role: 'user',
+                        content: message
                     });
+                }
 
-                if (insertError) {
-                    console.error('Error saving chat history:', insertError);
+                // Save the updated chat history
+                const newChatId = chatId || uuidv4();
+                if (chatData) {
+                    const title = chatData.messages[0]?.content.substring(0, 50) || 'New Chat';
+                    await saveChatHistory(supabaseUserId, newChatId, title, chatData);
                 }
             }
         });

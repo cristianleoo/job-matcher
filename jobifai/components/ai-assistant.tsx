@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Send, User } from "lucide-react";
@@ -8,10 +8,10 @@ import { useAuth } from '@clerk/nextjs';
 import { useUserStore } from '@/lib/userStore';
 import { ChatSidebar } from "@/components/chat-sidebar";
 import { v4 as uuidv4 } from 'uuid';
-import React from "react";
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { tomorrow } from 'react-syntax-highlighter/dist/cjs/styles/prism';
+import { getChatHistory } from '@/lib/chatOperations';
 
 interface Chat {
   id: string;
@@ -24,7 +24,11 @@ type Message = {
   content: string;
 };
 
-export function AIAssistant() {
+interface AIAssistantProps {
+  chatId: string | null;
+}
+
+export function AIAssistant({ chatId }: AIAssistantProps) {
   const { userId } = useAuth();
   const setSupabaseUserId = useUserStore((state) => state.setSupabaseUserId);
   const supabaseUserId = useUserStore((state) => state.supabaseUserId);
@@ -39,39 +43,32 @@ export function AIAssistant() {
 
   useEffect(() => {
     if (userId) {
-      console.log("Fetching user data for userId:", userId);
       fetch('/api/auth', { method: 'POST' })
         .then(res => res.json())
         .then(data => {
-          console.log("Received user data:", data);
           if (data.user && data.user.id) {
             setSupabaseUserId(data.user.id);
-            console.log("Set supabaseUserId to:", data.user.id);
-          } else {
-            console.log("No user id found in response");
           }
         })
         .catch(error => console.error('Error fetching user data:', error));
-    } else {
-      console.log("No userId available");
     }
   }, [userId, setSupabaseUserId]);
 
   useEffect(() => {
-    const savedChats = localStorage.getItem('chats');
-    if (savedChats) {
-      const parsedChats = JSON.parse(savedChats);
-      setChats(parsedChats);
-      if (parsedChats.length > 0) {
-        setActiveChat(parsedChats[0].id);
-        console.log("Loaded chats from localStorage, set activeChat to:", parsedChats[0].id);
+    const loadChat = async () => {
+      if (chatId && supabaseUserId) {
+        const chatData = await getChatHistory(supabaseUserId, chatId);
+        if (chatData) {
+          setChats([{ id: chatId, title: "Loaded Chat", messages: chatData.messages }]);
+          setActiveChat(chatId);
+        }
       } else {
         createInitialChat();
       }
-    } else {
-      createInitialChat();
-    }
-  }, []);
+    };
+
+    loadChat();
+  }, [chatId, supabaseUserId]);
 
   const createInitialChat = () => {
     const initialChat = {
@@ -81,24 +78,10 @@ export function AIAssistant() {
     };
     setChats([initialChat]);
     setActiveChat(initialChat.id);
-    console.log("Created initial chat, set activeChat to:", initialChat.id);
   };
 
   useEffect(() => {
-    console.log("Saving chats to localStorage:", chats);
-    localStorage.setItem('chats', JSON.stringify(chats));
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chats]);
-
-  useEffect(() => {
-    console.log("activeChat changed:", activeChat);
-    if (activeChat) {
-      console.log("Current chat messages:", chats.find(chat => chat.id === activeChat)?.messages);
-    }
-  }, [activeChat, chats]);
-
-  useEffect(() => {
-    console.log("Chats state updated:", chats);
   }, [chats]);
 
   const handleSend = async () => {
@@ -206,8 +189,6 @@ export function AIAssistant() {
     });
   };
 
-  const activeMessages = chats.find(chat => chat.id === activeChat)?.messages || [];
-
   return (
     <div className="flex h-screen w-full overflow-hidden">
       <div className="w-64 bg-gray-100 p-4 overflow-y-auto">
@@ -223,7 +204,7 @@ export function AIAssistant() {
         {activeChat ? (
           <>
             <div className="flex-grow overflow-y-auto p-4 space-y-4">
-              {activeMessages.map((message, index) => (
+              {chats.find(chat => chat.id === activeChat)?.messages.map((message, index) => (
                 <div
                   key={`${activeChat}-${index}`}
                   className={`p-2 rounded-lg flex items-start ${

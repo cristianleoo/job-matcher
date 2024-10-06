@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { useUserStore } from '@/lib/userStore';
-import ReactMarkdown from 'react-markdown';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,8 +12,9 @@ const supabase = createClient(
 
 type ChatHistory = {
   id: string;
-  message: string;
+  title: string;
   timestamp: string;
+  bucket_path: string;
 };
 
 export function ChatSidebar() {
@@ -28,7 +28,7 @@ export function ChatSidebar() {
 
       const { data, error } = await supabase
         .from('chat_histories')
-        .select('id, message, timestamp')
+        .select('id, title, timestamp, bucket_path')
         .eq('user_id', supabaseUserId)
         .order('timestamp', { ascending: false })
         .limit(20);
@@ -51,6 +51,34 @@ export function ChatSidebar() {
     router.push(`/chat?id=${chatId}`);
   };
 
+  const handleDeleteChat = async (chatId: string, bucketPath: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (!supabaseUserId) return;
+
+    // Delete the JSON file from the bucket
+    const { error: bucketError } = await supabase.storage
+      .from('chat-histories')
+      .remove([bucketPath]);
+
+    if (bucketError) {
+      console.error('Error deleting chat file from bucket:', bucketError);
+      return;
+    }
+
+    // Delete the chat entry from the database
+    const { error: dbError } = await supabase
+      .from('chat_histories')
+      .delete()
+      .eq('id', chatId)
+      .eq('user_id', supabaseUserId);
+
+    if (dbError) {
+      console.error('Error deleting chat from database:', dbError);
+    } else {
+      setChatHistory(chatHistory.filter(chat => chat.id !== chatId));
+    }
+  };
+
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleString('en-US', { 
@@ -61,11 +89,9 @@ export function ChatSidebar() {
     });
   };
 
-  const truncateMessage = (message: string, maxLength: number = 30) => {
-    // Remove markdown syntax before truncating
-    const plainText = message.replace(/[#*_`~]/g, '');
-    if (plainText.length <= maxLength) return plainText;
-    return plainText.substring(0, maxLength) + '...';
+  const truncateTitle = (title: string, maxLength: number = 20) => {
+    if (title.length <= maxLength) return title;
+    return title.substring(0, maxLength) + '...';
   };
 
   return (
@@ -75,15 +101,30 @@ export function ChatSidebar() {
       </Button>
       <div className="space-y-2">
         {chatHistory.map((chat) => (
-          <Button
-            key={chat.id}
-            onClick={() => handleChatSelect(chat.id)}
-            variant="ghost"
-            className="w-full justify-start text-left flex flex-col items-start"
-          >
-            <span className="text-sm font-medium">{truncateMessage(chat.message)}</span>
-            <span className="text-xs text-gray-500">{formatTimestamp(chat.timestamp)}</span>
-          </Button>
+          <div key={chat.id} className="flex items-center space-x-2">
+            <Button
+              onClick={() => handleChatSelect(chat.id)}
+              variant="ghost"
+              className="flex-grow min-w-0 h-auto py-2 px-3 justify-start"
+            >
+              <div className="w-full overflow-hidden">
+                <div className="text-sm font-medium truncate">
+                  {truncateTitle(chat.title)}
+                </div>
+                <div className="text-xs text-gray-500 truncate">
+                  {formatTimestamp(chat.timestamp)}
+                </div>
+              </div>
+            </Button>
+            <Button
+              onClick={(e) => handleDeleteChat(chat.id, chat.bucket_path, e)}
+              variant="ghost"
+              size="icon"
+              className="flex-shrink-0 h-auto py-2"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         ))}
       </div>
     </div>
