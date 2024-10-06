@@ -12,6 +12,7 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { getChatHistory, getAllChatHistories, deleteChatHistory } from '@/lib/chatOperations';
+import { useRouter } from 'next/navigation';
 
 interface Chat {
   id: string;
@@ -38,6 +39,8 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState("");
+  const [isResumeContext, setIsResumeContext] = useState(false);
+  const router = useRouter();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -104,9 +107,8 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
   }, [chats]);
 
   const handleSend = async () => {
-    console.log("handleSend called", { input, isLoading, supabaseUserId, activeChat });
+    console.log("handleSend called", { input, isLoading, supabaseUserId, activeChat, isResumeContext });
     if (input.trim() && !isLoading && supabaseUserId && activeChat) {
-      console.log("Conditions met, proceeding with send");
       setIsLoading(true);
       const userMessage = { role: "user", content: input };
       setChats(prevChats => prevChats.map(chat => 
@@ -118,7 +120,6 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
       setStreamingMessage("");
 
       try {
-        console.log("Sending request to /api/chat");
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: {
@@ -127,6 +128,8 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
           body: JSON.stringify({
             message: input,
             supabaseUserId: supabaseUserId,
+            chatId: activeChat,
+            context: isResumeContext ? 'resume' : 'general'
           }),
         });
 
@@ -232,6 +235,25 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
       <div className="flex-grow flex flex-col h-full overflow-hidden">
         {activeChat ? (
           <>
+            <div className="p-4 border-b flex justify-between items-center">
+              <h2 className="text-xl font-bold">
+                {chats.find(chat => chat.id === activeChat)?.title || "Chat"}
+              </h2>
+              <div className="flex items-center">
+                <label className="mr-2">Resume Context:</label>
+                <input
+                  type="checkbox"
+                  checked={isResumeContext}
+                  onChange={(e) => setIsResumeContext(e.target.checked)}
+                />
+                <Button
+                  onClick={() => router.push('/profile')}
+                  className="ml-4"
+                >
+                  Edit Resume
+                </Button>
+              </div>
+            </div>
             <div className="flex-grow overflow-y-auto p-4 space-y-4">
               {chats.find(chat => chat.id === activeChat)?.messages?.map((message, index) => (
                 <div
@@ -310,7 +332,7 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask me anything..."
+                placeholder={isResumeContext ? "Ask about your resume..." : "Ask me anything..."}
                 onKeyPress={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();

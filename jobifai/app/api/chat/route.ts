@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { saveChatHistory, getChatHistory } from '@/lib/chatOperations';
+import { pdfToText } from 'pdf-ts'; // Add this import
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { message, supabaseUserId, context, chatId } = await req.json();
+    const { message, supabaseUserId, context, chatId, resumeContent } = await req.json();
 
     if (!supabaseUserId) {
         console.log("Supabase user ID not found in request");
@@ -43,45 +44,89 @@ export async function POST(req: NextRequest) {
         let resumeContent = '';
 
         if (chatId) {
+            console.log(`Fetching chat history for chatId: ${chatId}`);
             chatData = await getChatHistory(supabaseUserId, chatId);
+            if (!chatData) {
+                console.error(`Failed to fetch chat history for chatId: ${chatId}`);
+                return NextResponse.json({ error: 'Failed to fetch chat history' }, { status: 500 });
+            }
+            console.log('Fetched chat data:', JSON.stringify(chatData).substring(0, 100) + '...');
         } else {
+            console.log('No chatId provided, creating new chat data');
             chatData = { messages: [] };
         }
 
         if (context === 'resume') {
-            // Fetch resume content
+            // Fetch resume path from the resumes table
             const { data: resumeData, error: resumeError } = await supabase
                 .from('resumes')
-                .select('content')
+                .select('title')
                 .eq('user_id', supabaseUserId)
                 .single();
 
             if (resumeError) {
-                console.error('Error fetching resume:', resumeError);
-                return NextResponse.json({ error: 'Error fetching resume' }, { status: 500 });
+                console.error('Error fetching resume path:', resumeError);
+                return NextResponse.json({ error: 'Error fetching resume path' }, { status: 500 });
             }
 
-            resumeContent = resumeData?.content || '';
+            if (!resumeData || !resumeData.title) {
+                return NextResponse.json({ error: 'No resume found for this user' }, { status: 404 });
+            }
+
+            // Fetch the actual resume content from the user_resumes bucket
+            const { data: fileData, error: downloadError } = await supabase.storage
+                .from('user_resumes')
+                .download(resumeData.title);
+
+            if (downloadError) {
+                console.error('Error downloading resume:', downloadError);
+                return NextResponse.json({ error: 'Error downloading resume' }, { status: 500 });
+            }
+
+            try {
+                // Convert the file data to a Uint8Array
+                const arrayBuffer = await fileData.arrayBuffer();
+                const uint8Array = new Uint8Array(arrayBuffer);
+
+                // Extract text from PDF
+                resumeContent = await pdfToText(uint8Array);
+
+                if (!resumeContent) {
+                    return NextResponse.json({ error: 'Failed to extract text from resume' }, { status: 500 });
+                }
+
+                console.log('Resume content:', resumeContent.substring(0, 100) + '...'); // Log the first 100 characters
+            } catch (pdfError) {
+                console.error('Error extracting text from PDF:', pdfError);
+                return NextResponse.json({ error: 'Failed to process resume PDF' }, { status: 500 });
+            }
         }
 
         // Prepare chat history for Gemini
-        const history = chatData ? chatData.messages.map((entry: { role: string; content: string }) => {
-            if (entry.role === "user") {
-                return { role: "user", parts: [{ text: entry.content }] };
-            } else {
-                return { role: "model", parts: [{ text: entry.content }] };
-            }
-        }) : [];
+        const history = chatData?.messages?.map((entry: { role: string; content: string }) => ({
+            role: entry.role === "user" ? "user" : "model",
+            parts: [{ text: entry.content }]
+        })) || [];
 
-        // Start chat with history and resume content if applicable
+        console.log('Prepared history for Gemini:', JSON.stringify(history).substring(0, 100) + '...');
+
+        // Start chat with history
         const chat = model.startChat({
             history: history,
         });
 
-        // If it's a resume context, add the resume content to the message
+        // If it's a resume context, add the resume content to the message with clear instructions
         const fullMessage = context === 'resume' 
-            ? `Given the following resume content: ${resumeContent}\n\nUser question: ${message}`
+            ? `You are an AI assistant helping a job seeker. The following text is the user's resume:
+            Resume Content:
+            ${resumeContent}
+
+            Please keep this resume in mind when answering the following question from the user. Treat this resume as belonging to the person you're talking to.
+
+            User question: ${message}`
             : message;
+
+        console.log("Sending message to AI:", fullMessage.substring(0, 200) + '...'); // Log the first 200 characters
 
         // Send message and get stream
         const result = await chat.sendMessageStream(fullMessage);
@@ -99,19 +144,16 @@ export async function POST(req: NextRequest) {
 
                 // Sanitize the response before saving
                 const sanitizedResponse = sanitizeUnicode(fullResponse);
-
                 // Update chatData with new message and response
-                if (chatData) {
-                    chatData.messages.push({
-                        role: 'user',
-                        content: message
-                    });
-                }
+                chatData?.messages?.push(
+                    { role: 'user', content: message },
+                    { role: 'assistant', content: sanitizedResponse }
+                );
 
                 // Save the updated chat history
                 const newChatId = chatId || uuidv4();
+                const title = chatData?.messages?.[0]?.content?.substring(0, 50) || 'New Chat';
                 if (chatData) {
-                    const title = chatData.messages[0]?.content.substring(0, 50) || 'New Chat';
                     await saveChatHistory(supabaseUserId, newChatId, title, chatData);
                 }
             }
@@ -124,8 +166,11 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error) {
-        console.error('Unexpected error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        console.error('Unexpected error in POST /api/chat:', error);
+        return NextResponse.json(
+            { error: 'Internal Server Error', details: error instanceof Error ? error.message : String(error) },
+            { status: 500 }
+        );
     }
 }
 

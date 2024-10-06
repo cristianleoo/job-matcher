@@ -45,6 +45,8 @@ export async function saveChatHistory(userId: string, chatId: string, title: str
 }
 
 export async function getChatHistory(userId: string, chatId: string): Promise<ChatData | null> {
+  console.log(`Fetching chat history for user ${userId} and chat ${chatId}`);
+  
   const { data, error } = await supabase
     .from('chat_histories')
     .select('bucket_path')
@@ -53,21 +55,35 @@ export async function getChatHistory(userId: string, chatId: string): Promise<Ch
     .single();
 
   if (error) {
-    console.error('Error fetching chat history:', error);
+    console.error('Error fetching chat history from database:', error);
     return null;
   }
+
+  if (!data || !data.bucket_path) {
+    console.error('No bucket path found for chat history');
+    return null;
+  }
+
+  console.log(`Downloading chat history from bucket path: ${data.bucket_path}`);
 
   const { data: fileData, error: downloadError } = await supabase.storage
     .from('chat-histories')
     .download(data.bucket_path);
 
   if (downloadError) {
-    console.error('Error downloading chat history:', downloadError);
+    console.error('Error downloading chat history from storage:', downloadError);
     return null;
   }
 
-  const chatData = JSON.parse(await fileData.text());
-  return chatData;
+  try {
+    const textContent = await fileData.text();
+    console.log('Chat history file content:', textContent.substring(0, 100) + '...');
+    const chatData = JSON.parse(textContent);
+    return chatData;
+  } catch (parseError) {
+    console.error('Error parsing chat history JSON:', parseError);
+    return null;
+  }
 }
 
 export async function getAllChatHistories(userId: string): Promise<ChatHistory[] | null> {
