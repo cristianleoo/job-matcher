@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/cjs/styles/prism';
-import { getChatHistory, getAllChatHistories } from '@/lib/chatOperations';
+import { getChatHistory, getAllChatHistories, deleteChatHistory } from '@/lib/chatOperations';
 
 interface Chat {
   id: string;
@@ -54,19 +54,29 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
     }
   }, [userId, setSupabaseUserId]);
 
+  const loadChatMessages = async (chatId: string) => {
+    if (supabaseUserId) {
+      const chatData = await getChatHistory(supabaseUserId, chatId);
+      if (chatData) {
+        setChats(prevChats => prevChats.map(chat => 
+          chat.id === chatId ? { ...chat, messages: chatData.messages } : chat
+        ));
+      }
+    }
+  };
+
   useEffect(() => {
     const loadChats = async () => {
       if (supabaseUserId) {
         const allChats = await getAllChatHistories(supabaseUserId);
         if (allChats) {
-          setChats(allChats);
+          setChats(allChats.map(chat => ({ ...chat, messages: [] })));
           if (chatId) {
-            const chatData = await getChatHistory(supabaseUserId, chatId);
-            if (chatData) {
-              setActiveChat(chatId);
-            }
+            setActiveChat(chatId);
+            await loadChatMessages(chatId);
           } else if (allChats.length > 0) {
             setActiveChat(allChats[0].id);
+            await loadChatMessages(allChats[0].id);
           } else {
             createInitialChat();
           }
@@ -183,19 +193,31 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
     console.log("Created new chat, set activeChat to:", newChat.id);
   };
 
-  const handleDeleteChat = (chatId: string) => {
-    setChats(prevChats => {
-      const updatedChats = prevChats.filter(chat => chat.id !== chatId);
-      if (activeChat === chatId) {
-        if (updatedChats.length > 0) {
-          setActiveChat(updatedChats[0].id);
-          console.log("Deleted active chat, set new activeChat to:", updatedChats[0].id);
-        } else {
-          createInitialChat();
-        }
+  const handleSelectChat = async (selectedChatId: string) => {
+    setActiveChat(selectedChatId);
+    await loadChatMessages(selectedChatId);
+  };
+
+  const handleDeleteChat = async (chatId: string) => {
+    if (supabaseUserId) {
+      const success = await deleteChatHistory(supabaseUserId, chatId);
+      if (success) {
+        setChats(prevChats => {
+          const updatedChats = prevChats.filter(chat => chat.id !== chatId);
+          if (activeChat === chatId) {
+            if (updatedChats.length > 0) {
+              setActiveChat(updatedChats[0].id);
+              loadChatMessages(updatedChats[0].id);
+            } else {
+              createInitialChat();
+            }
+          }
+          return updatedChats;
+        });
+      } else {
+        console.error('Failed to delete chat');
       }
-      return updatedChats;
-    });
+    }
   };
 
   return (
@@ -203,7 +225,7 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
       <ChatSidebar
         chats={chats}
         activeChat={activeChat}
-        onSelectChat={setActiveChat}
+        onSelectChat={handleSelectChat}
         onNewChat={handleNewChat}
         onDeleteChat={handleDeleteChat}
       />

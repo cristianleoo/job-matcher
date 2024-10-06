@@ -84,3 +84,30 @@ export async function getAllChatHistories(userId: string): Promise<ChatHistory[]
 
   return data;
 }
+
+export async function deleteChatHistory(userId: string, chatId: string): Promise<boolean> {
+  // Delete from chat_histories table
+  const { error: deleteError } = await supabase
+    .from('chat_histories')
+    .delete()
+    .eq('user_id', userId)
+    .eq('id', chatId);
+
+  if (deleteError) {
+    console.error('Error deleting chat history from database:', deleteError);
+    return false;
+  }
+
+  // Delete from storage bucket
+  const bucketPath = `public/${userId}/${chatId}.json`;
+  const { error: storageError } = await supabase.storage
+    .from('chat-histories')
+    .remove([bucketPath]);
+
+  if (storageError) {
+    console.error('Error deleting chat history from storage:', storageError);
+    return false;
+  }
+
+  return true;
+}
