@@ -57,6 +57,7 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [userData, setUserData] = useState<any>(null);
   const [resumeContent, setResumeContent] = useState<string>('');
+  const [extractedText, setExtractedText] = useState<string>('');
   const router = useRouter();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -151,7 +152,7 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
             chatId: activeChat,
             context: isUserDataLoaded ? 'resume' : 'general',
             userData: isUserDataLoaded ? userData : null,
-            resumeContent: isUserDataLoaded ? resumeContent : null
+            resumeContent: isUserDataLoaded ? extractedText : null
           }),
           signal: controller.signal
         });
@@ -253,6 +254,10 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
     }
   };
 
+  const handleTextExtracted = (text: string) => {
+    setExtractedText(prevText => prevText + ' ' + text);
+  };
+
   const fetchResumeContent = async () => {
     if (supabaseUserId) {
       // Fetch resume path from the resumes table
@@ -282,10 +287,8 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
         return;
       }
 
-      // Convert the file data to text
-      const text = await fileData.text();
-      setResumeContent(text);
       setResumeUrl(URL.createObjectURL(fileData));
+      // The text content will be set by the PDFViewer component
     }
   };
 
@@ -424,7 +427,7 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
           {isUserDataLoaded && resumeUrl && (
             <div className="w-1/3 border-l p-4 overflow-y-auto">
               <h3 className="text-lg font-semibold mb-2">Resume</h3>
-              <PDFViewer pdfUrl={resumeUrl} />
+              <PDFViewer pdfUrl={resumeUrl} onTextExtracted={handleTextExtracted} />
             </div>
           )}
         </div>
