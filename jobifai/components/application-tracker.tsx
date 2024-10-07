@@ -7,6 +7,7 @@ import { useUserStore } from '@/lib/userStore';
 import { AddJobForm } from './add-job-form';
 import React from 'react';
 import { FaLock } from 'react-icons/fa'; // Import the lock icon
+import { ResumeEditor } from './resume-editor';
 
 interface JobApplication {
   id: string;
@@ -25,6 +26,33 @@ interface JobApplication {
   description: string;
 }
 
+interface UserProfile {
+  experience: Experience[];
+  education: Education[];
+  skills: string[];
+  projects: Project[];
+}
+
+interface Experience {
+  company: string;
+  position: string;
+  startDate: string;
+  endDate: string;
+  description: string;
+}
+
+interface Education {
+  institution: string;
+  degree: string;
+  graduationDate: string;
+}
+
+interface Project {
+  name: string;
+  description: string;
+  technologies: string[];
+}
+
 export function ApplicationTracker() {
   const { isLoaded, userId } = useAuth();
   const [applications, setApplications] = useState<JobApplication[]>([]);
@@ -36,6 +64,9 @@ export function ApplicationTracker() {
   const [extractedJobInfo, setExtractedJobInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showJobForm, setShowJobForm] = useState(false);
+  const [showResumeEditor, setShowResumeEditor] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<JobApplication | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   const fetchApplications = useCallback(async () => {
     if (!supabaseUserId) return;
@@ -56,6 +87,27 @@ export function ApplicationTracker() {
       fetchApplications();
     }
   }, [isLoaded, userId, supabaseUserId, fetchApplications]);
+
+  useEffect(() => {
+    // Fetch user profile data
+    const fetchUserProfile = async () => {
+      if (supabaseUserId) {
+        try {
+          const response = await fetch(`/api/user-profile?supabaseUserId=${supabaseUserId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setUserProfile(data);
+          } else {
+            console.error('Failed to fetch user profile');
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+        }
+      }
+    };
+
+    fetchUserProfile();
+  }, [supabaseUserId]);
 
   const handleDelete = async (jobId: string) => {
     try {
@@ -183,6 +235,39 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
     }
   };
 
+  const handleEditResume = (job: JobApplication) => {
+    setSelectedJob(job);
+    setShowResumeEditor(true);
+  };
+
+  const handleSaveResume = async (updatedResume: string) => {
+    if (selectedJob && supabaseUserId) {
+      try {
+        const response = await fetch('/api/resumes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            supabaseUserId,
+            jobId: selectedJob.id,
+            content: updatedResume,
+          }),
+        });
+
+        if (response.ok) {
+          alert('Resume saved successfully');
+          setShowResumeEditor(false);
+        } else {
+          throw new Error('Failed to save resume');
+        }
+      } catch (error) {
+        console.error('Error saving resume:', error);
+        alert('Failed to save resume');
+      }
+    }
+  };
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-4">Add New Job Application</h2>
@@ -280,6 +365,12 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
                       </button>
                     </Link>
                     <button
+                      onClick={() => handleEditResume(app)}
+                      className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-3 rounded"
+                    >
+                      Edit Resume
+                    </button>
+                    <button
                       onClick={() => handleDelete(app.id)}
                       className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded"
                     >
@@ -292,6 +383,25 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
           </tbody>
         </table>
       </div>
+
+      {showResumeEditor && selectedJob && userProfile && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+          <div className="relative top-20 mx-auto p-5 border w-11/12 shadow-lg rounded-md bg-white">
+            <h2 className="text-2xl font-bold mb-4">Edit Resume for {selectedJob.title}</h2>
+            <ResumeEditor
+              jobDescription={selectedJob.description}
+              userProfile={userProfile}
+              onSave={handleSaveResume}
+            />
+            <button
+              onClick={() => setShowResumeEditor(false)}
+              className="mt-4 bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
