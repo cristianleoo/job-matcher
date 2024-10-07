@@ -350,7 +350,7 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
           </div>
         </div>
         <div className="flex-grow flex overflow-hidden">
-          <div className="flex-grow overflow-y-auto p-4 space-y-4">
+          <div className={`flex-grow overflow-y-auto p-4 space-y-4 ${isUserDataLoaded ? 'max-w-[66%]' : 'w-full'}`}>
             {chats.find(chat => chat.id === activeChat)?.messages?.map((message, index) => (
               <div
                 key={`${activeChat}-${index}`}
@@ -365,7 +365,7 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
                 ) : (
                   <User className="w-8 h-8 p-1 rounded-full bg-gray-300 mr-2 flex-shrink-0" />
                 )}
-                <div className="flex-grow">
+                <div className="flex-grow overflow-hidden">
                   <ReactMarkdown
                     components={{
                       code({node, inline, className, children, ...props}: any) {
@@ -377,6 +377,7 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
                             style={tomorrow}
                             language={match[1]}
                             PreTag="div"
+                            className="max-w-full overflow-x-auto"
                           />
                         ) : (
                           <code {...props} className={className}>
@@ -385,6 +386,7 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
                         )
                       }
                     }}
+                    className="break-words"
                   >
                     {message.content}
                   </ReactMarkdown>
