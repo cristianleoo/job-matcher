@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { FaEnvelope, FaPhone, FaMapMarkerAlt, FaLinkedin, FaGlobe } from 'react-icons/fa';
+import { FaEnvelope, FaPhone, FaMapMarkerAlt, FaLinkedin, FaGlobe, FaTrash } from 'react-icons/fa';
 
 interface ResumeEditorProps {
   jobDescription: string;
@@ -29,7 +29,7 @@ interface Experience {
   position: string;
   startDate: string;
   endDate: string;
-  description: string;
+  description: string[];
 }
 
 interface Education {
@@ -40,12 +40,24 @@ interface Education {
 
 interface Project {
   name: string;
-  description: string;
+  description: string[];
   technologies: string[];
 }
 
 export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEditorProps) {
-  const [resume, setResume] = useState(userProfile);
+  const [resume, setResume] = useState<UserProfile>({
+    name: userProfile.name || '',
+    email: userProfile.email || '',
+    phone: userProfile.phone || '',
+    location: userProfile.location || '',
+    linkedin: userProfile.linkedin || '',
+    portfolio: userProfile.portfolio || '',
+    summary: userProfile.summary || '',
+    experience: userProfile.experience || [],
+    education: userProfile.education || [],
+    skills: userProfile.skills || [],
+    projects: userProfile.projects || []
+  });
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
@@ -75,14 +87,17 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
     window.print();
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setResume(prev => ({ ...prev, [field]: value }));
+  const handleInputChange = (field: string, value: string | string[]) => {
+    setResume(prev => ({ ...prev, [field]: Array.isArray(value) ? value : value }));
   };
 
-  const handleExperienceChange = (index: number, field: string, value: string) => {
-    const newExperience = [...resume.experience];
-    newExperience[index] = { ...newExperience[index], [field]: value };
-    setResume(prev => ({ ...prev, experience: newExperience }));
+  const handleExperienceChange = (index: number, field: string, value: string | string[]) => {
+    setResume(prev => ({
+      ...prev,
+      experience: prev.experience.map((exp, i) => 
+        i === index ? { ...exp, [field]: field === 'description' ? (Array.isArray(value) ? value : value.split('\n')) : value } : exp
+      )
+    }));
   };
 
   const handleEducationChange = (index: number, field: string, value: string) => {
@@ -91,10 +106,37 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
     setResume(prev => ({ ...prev, education: newEducation }));
   };
 
-  const handleProjectChange = (index: number, field: string, value: string) => {
+  const handleProjectChange = (index: number, field: string, value: string | string[]) => {
     const newProjects = [...resume.projects];
-    newProjects[index] = { ...newProjects[index], [field]: value };
+    if (field === 'description') {
+      newProjects[index] = { ...newProjects[index], [field]: value.toString().split('\n') };
+    } else if (field === 'technologies') {
+      newProjects[index] = { ...newProjects[index], [field]: (value as string).split(',').map(tech => tech.trim()) };
+    } else {
+      newProjects[index] = { ...newProjects[index], [field]: value };
+    }
     setResume(prev => ({ ...prev, projects: newProjects }));
+  };
+
+  const deleteExperience = (index: number) => {
+    setResume(prev => ({
+      ...prev,
+      experience: prev.experience.filter((_, i) => i !== index)
+    }));
+  };
+
+  const deleteEducation = (index: number) => {
+    setResume(prev => ({
+      ...prev,
+      education: prev.education.filter((_, i) => i !== index)
+    }));
+  };
+
+  const deleteProject = (index: number) => {
+    setResume(prev => ({
+      ...prev,
+      projects: prev.projects.filter((_, i) => i !== index)
+    }));
   };
 
   return (
@@ -127,12 +169,10 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
           <h2 className="text-2xl font-semibold mb-3 border-b-2 border-gray-300 pb-1">Experience</h2>
           {resume.experience.map((exp, index) => (
             <div key={index} className="mb-4">
-              <div className="flex justify-between items-baseline">
-                <h3 className="text-xl font-semibold">{exp.position}</h3>
-                <p className="text-gray-600 text-sm">{exp.startDate} - {exp.endDate}</p>
-              </div>
+              <h3 className="text-lg font-semibold">{exp.position}</h3>
               <p className="text-gray-700 mb-2">{exp.company}</p>
-              <p>{exp.description}</p>
+              <p className="text-gray-600 mb-2">{`${exp.startDate} - ${exp.endDate}`}</p>
+              <p className="text-gray-700">{exp.description}</p>
             </div>
           ))}
         </section>
@@ -160,7 +200,11 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
           {resume.projects.map((project, index) => (
             <div key={index} className="mb-4">
               <h3 className="text-xl font-semibold">{project.name}</h3>
-              <p>{project.description}</p>
+              <ul className="list-disc pl-5">
+                {project.description.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
               <p className="text-gray-600 mt-2">Technologies: {project.technologies.join(', ')}</p>
             </div>
           ))}
@@ -208,7 +252,7 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
 
         <h3 className="text-xl font-semibold">Experience</h3>
         {resume.experience.map((exp, index) => (
-          <div key={index} className="space-y-2">
+          <div key={index} className="space-y-2 border p-4 rounded">
             <Input
               value={exp.position}
               onChange={(e) => handleExperienceChange(index, 'position', e.target.value)}
@@ -232,17 +276,20 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
               />
             </div>
             <Textarea
-              value={exp.description}
-              onChange={(e) => handleExperienceChange(index, 'description', e.target.value)}
-              placeholder="Description"
-              rows={3}
+              value={Array.isArray(exp.description) ? exp.description.join('\n') : exp.description}
+              onChange={(e) => handleExperienceChange(index, 'description', e.target.value.split('\n'))}
+              placeholder="Description (one bullet point per line)"
+              rows={5}
             />
+            <Button onClick={() => deleteExperience(index)} className="bg-red-500 hover:bg-red-600 text-white">
+              <FaTrash className="mr-2" /> Delete Experience
+            </Button>
           </div>
         ))}
 
         <h3 className="text-xl font-semibold">Education</h3>
         {resume.education.map((edu, index) => (
-          <div key={index} className="space-y-2">
+          <div key={index} className="space-y-2 border p-4 rounded">
             <Input
               value={edu.institution}
               onChange={(e) => handleEducationChange(index, 'institution', e.target.value)}
@@ -258,36 +305,42 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
               onChange={(e) => handleEducationChange(index, 'graduationDate', e.target.value)}
               placeholder="Graduation Date"
             />
+            <Button onClick={() => deleteEducation(index)} className="bg-red-500 hover:bg-red-600 text-white">
+              <FaTrash className="mr-2" /> Delete Education
+            </Button>
           </div>
         ))}
 
         <h3 className="text-xl font-semibold">Skills</h3>
         <Textarea
           value={resume.skills.join(', ')}
-          onChange={(e) => handleInputChange('skills', e.target.value.split(', '))}
+          onChange={(e) => handleInputChange('skills', e.target.value.split(',').map(skill => skill.trim()))}
           placeholder="Skills (comma-separated)"
           rows={3}
         />
 
         <h3 className="text-xl font-semibold">Projects</h3>
         {resume.projects.map((project, index) => (
-          <div key={index} className="space-y-2">
+          <div key={index} className="space-y-2 border p-4 rounded">
             <Input
               value={project.name}
               onChange={(e) => handleProjectChange(index, 'name', e.target.value)}
               placeholder="Project Name"
             />
             <Textarea
-              value={project.description}
+              value={project.description.join('\n')}
               onChange={(e) => handleProjectChange(index, 'description', e.target.value)}
-              placeholder="Project Description"
-              rows={3}
+              placeholder="Project Description (one bullet point per line)"
+              rows={5}
             />
             <Input
               value={project.technologies.join(', ')}
-              onChange={(e) => handleProjectChange(index, 'technologies', e.target.value.split(', '))}
+              onChange={(e) => handleProjectChange(index, 'technologies', e.target.value)}
               placeholder="Technologies (comma-separated)"
             />
+            <Button onClick={() => deleteProject(index)} className="bg-red-500 hover:bg-red-600 text-white">
+              <FaTrash className="mr-2" /> Delete Project
+            </Button>
           </div>
         ))}
 
