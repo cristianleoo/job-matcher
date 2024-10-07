@@ -4,7 +4,6 @@ import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { saveChatHistory, getChatHistory } from '@/lib/chatOperations';
-import { pdfToText } from 'pdf-ts'; // Add this import
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -32,7 +31,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { message, supabaseUserId, context, chatId } = await req.json();
+    const { message, supabaseUserId, context, chatId, userData, resumeContent } = await req.json();
 
     if (!supabaseUserId) {
         console.log("Supabase user ID not found in request");
@@ -41,7 +40,6 @@ export async function POST(req: NextRequest) {
 
     try {
         let chatData;
-        let resumeContent = '';
         const currentChatId = chatId || uuidv4(); // Use existing chatId or create a new one
 
         console.log(`Fetching or creating chat history for chatId: ${currentChatId}`);
@@ -49,52 +47,6 @@ export async function POST(req: NextRequest) {
         if (!chatData) {
             console.log(`No existing chat found for chatId: ${currentChatId}. Creating a new chat.`);
             chatData = { messages: [] };
-        }
-
-        if (context === 'resume') {
-            // Fetch resume path from the resumes table
-            const { data: resumeData, error: resumeError } = await supabase
-                .from('resumes')
-                .select('title')
-                .eq('user_id', supabaseUserId)
-                .single();
-
-            if (resumeError) {
-                console.error('Error fetching resume path:', resumeError);
-                return NextResponse.json({ error: 'Error fetching resume path' }, { status: 500 });
-            }
-
-            if (!resumeData || !resumeData.title) {
-                return NextResponse.json({ error: 'No resume found for this user' }, { status: 404 });
-            }
-
-            // Fetch the actual resume content from the user_resumes bucket
-            const { data: fileData, error: downloadError } = await supabase.storage
-                .from('user_resumes')
-                .download(resumeData.title);
-
-            if (downloadError) {
-                console.error('Error downloading resume:', downloadError);
-                return NextResponse.json({ error: 'Error downloading resume' }, { status: 500 });
-            }
-
-            try {
-                // Convert the file data to a Uint8Array
-                const arrayBuffer = await fileData.arrayBuffer();
-                const uint8Array = new Uint8Array(arrayBuffer);
-
-                // Extract text from PDF
-                resumeContent = await pdfToText(uint8Array);
-
-                if (!resumeContent) {
-                    return NextResponse.json({ error: 'Failed to extract text from resume' }, { status: 500 });
-                }
-
-                console.log('Resume content:', resumeContent.substring(0, 100) + '...'); // Log the first 100 characters
-            } catch (pdfError) {
-                console.error('Error extracting text from PDF:', pdfError);
-                return NextResponse.json({ error: 'Failed to process resume PDF' }, { status: 500 });
-            }
         }
 
         // Prepare chat history for Gemini
@@ -111,7 +63,7 @@ export async function POST(req: NextRequest) {
         });
 
         // If it's a resume context, add the resume content to the message with clear instructions
-        const fullMessage = context === 'resume' 
+        const fullMessage = context === 'resume' && resumeContent
             ? `You are an AI assistant helping a job seeker. The following text is the user's resume:
             Resume Content:
             ${resumeContent}

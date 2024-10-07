@@ -15,6 +15,8 @@ import { getChatHistory, getAllChatHistories, deleteChatHistory } from '@/lib/ch
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import dynamic from 'next/dynamic';
+import { Toggle } from "@/components/ui/toggle";
+import { fetchUserData } from '@/lib/userDataOperations';
 
 const PDFViewer = dynamic(() => import('./PDFViewer'), { ssr: false });
 
@@ -51,8 +53,10 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState("");
-  const [isResumeContext, setIsResumeContext] = useState(false);
+  const [isUserDataLoaded, setIsUserDataLoaded] = useState(false);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
+  const [userData, setUserData] = useState<any>(null);
+  const [resumeContent, setResumeContent] = useState<string>('');
   const router = useRouter();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -120,7 +124,7 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
   }, [chats]);
 
   const handleSend = async () => {
-    console.log("handleSend called", { input, isLoading, supabaseUserId, activeChat, isResumeContext });
+    console.log("handleSend called", { input, isLoading, supabaseUserId, activeChat, isUserDataLoaded });
     if (input.trim() && !isLoading && supabaseUserId && activeChat) {
       setIsLoading(true);
       const userMessage = { role: "user", content: input };
@@ -145,7 +149,9 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
             message: input,
             supabaseUserId: supabaseUserId,
             chatId: activeChat,
-            context: isResumeContext ? 'resume' : 'general'
+            context: isUserDataLoaded ? 'resume' : 'general',
+            userData: isUserDataLoaded ? userData : null,
+            resumeContent: isUserDataLoaded ? resumeContent : null
           }),
           signal: controller.signal
         });
@@ -266,25 +272,39 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
         return;
       }
 
-      // Get the public URL for the resume
-      const { data: publicUrlData } = supabase.storage
+      // Fetch the actual resume content from the user_resumes bucket
+      const { data: fileData, error: downloadError } = await supabase.storage
         .from('user_resumes')
-        .getPublicUrl(resumeData.title);
+        .download(resumeData.title);
 
-      if (publicUrlData) {
-        console.log('Resume URL:', publicUrlData.publicUrl); // Add this log
-        setResumeUrl(publicUrlData.publicUrl);
-      } else {
-        console.error('Error getting public URL for resume');
+      if (downloadError) {
+        console.error('Error downloading resume:', downloadError);
+        return;
       }
+
+      // Convert the file data to text
+      const text = await fileData.text();
+      setResumeContent(text);
+      setResumeUrl(URL.createObjectURL(fileData));
     }
   };
 
-  useEffect(() => {
-    if (isResumeContext) {
-      fetchResumeContent();
+  const loadUserData = async () => {
+    if (supabaseUserId) {
+      setIsLoading(true);
+      try {
+        await fetchResumeContent();
+        const data = await fetchUserData(supabaseUserId);
+        setUserData(data);
+        setIsUserDataLoaded(true);
+      } catch (error) {
+        console.error('Error loading user data:', error);
+        // Add user feedback here, e.g., a toast notification
+      } finally {
+        setIsLoading(false);
+      }
     }
-  }, [isResumeContext, supabaseUserId]);
+  };
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
@@ -305,12 +325,19 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
             {chats.find(chat => chat.id === activeChat)?.title || "Chat"}
           </h2>
           <div className="flex items-center">
-            <label className="mr-2">Resume Context:</label>
-            <input
-              type="checkbox"
-              checked={isResumeContext}
-              onChange={(e) => setIsResumeContext(e.target.checked)}
-            />
+            <Toggle
+              pressed={isUserDataLoaded}
+              onPressedChange={(pressed) => {
+                if (pressed) {
+                  loadUserData();
+                } else {
+                  setIsUserDataLoaded(false);
+                  setResumeUrl(null);
+                }
+              }}
+            >
+              View Resume
+            </Toggle>
             <Button
               onClick={() => router.push('/profile')}
               className="ml-4"
@@ -394,7 +421,7 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
             )}
             <div ref={messagesEndRef} />
           </div>
-          {isResumeContext && resumeUrl && (
+          {isUserDataLoaded && resumeUrl && (
             <div className="w-1/3 border-l p-4 overflow-y-auto">
               <h3 className="text-lg font-semibold mb-2">Resume</h3>
               <PDFViewer pdfUrl={resumeUrl} />
@@ -405,7 +432,7 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isResumeContext ? "Ask about your resume..." : "Ask me anything..."}
+            placeholder={isUserDataLoaded ? "Ask about your resume..." : "Ask me anything..."}
             onKeyPress={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
