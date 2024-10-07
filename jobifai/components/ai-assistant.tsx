@@ -13,11 +13,23 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { getChatHistory, getAllChatHistories, deleteChatHistory } from '@/lib/chatOperations';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
+import dynamic from 'next/dynamic';
+
+const PDFViewer = dynamic(() => import('./PDFViewer'), { ssr: false });
+
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 interface Chat {
   id: string;
   title: string;
   messages: { role: string; content: string }[];
+  timestamp?: string;
+  bucket_path?: string;
 }
 
 type Message = {
@@ -40,6 +52,7 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState("");
   const [isResumeContext, setIsResumeContext] = useState(false);
+  const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const router = useRouter();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -119,6 +132,9 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
       setInput("");
       setStreamingMessage("");
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+
       try {
         const response = await fetch('/api/chat', {
           method: 'POST',
@@ -131,33 +147,15 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
             chatId: activeChat,
             context: isResumeContext ? 'resume' : 'general'
           }),
+          signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-          console.error("API response not ok", response.status, response.statusText);
-          throw new Error('Failed to get AI response');
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const newChatId = response.headers.get('X-Chat-ID');
-        if (newChatId && newChatId !== activeChat) {
-          setActiveChat(newChatId);
-          setChats(prevChats => {
-            const existingChatIndex = prevChats.findIndex(chat => chat.id === newChatId);
-            if (existingChatIndex !== -1) {
-              // Update existing chat
-              return prevChats.map((chat, index) => 
-                index === existingChatIndex 
-                  ? { ...chat, messages: [...chat.messages, userMessage] }
-                  : chat
-              );
-            } else {
-              // Add new chat
-              return [...prevChats, { id: newChatId, title: "New Chat", messages: [userMessage] }];
-            }
-          });
-        }
-
-        console.log("API response received");
         const reader = response.body?.getReader();
         if (!reader) {
           throw new Error('Failed to get response reader');
@@ -185,7 +183,12 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
         });
         setStreamingMessage("");
       } catch (error) {
-        console.error('Error in AI chat:', error);
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.error('Request timed out');
+          // Handle timeout error
+        } else {
+          console.error('Error in AI chat:', error);
+        }
         setChats(prevChats => prevChats.map(chat => 
           chat.id === activeChat 
             ? { ...chat, messages: [...chat.messages, { role: "assistant", content: "I'm sorry, I encountered an error. Please try again." }] }
@@ -193,6 +196,8 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
         ));
       } finally {
         setIsLoading(false);
+        setStreamingMessage("");
+        clearTimeout(timeoutId);
       }
     } else {
       console.log("Conditions not met", { 
@@ -242,135 +247,178 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
     }
   };
 
+  const fetchResumeContent = async () => {
+    if (supabaseUserId) {
+      // Fetch resume path from the resumes table
+      const { data: resumeData, error: resumeError } = await supabase
+        .from('resumes')
+        .select('title')
+        .eq('user_id', supabaseUserId)
+        .single();
+
+      if (resumeError) {
+        console.error('Error fetching resume path:', resumeError);
+        return;
+      }
+
+      if (!resumeData || !resumeData.title) {
+        console.error('No resume found for this user');
+        return;
+      }
+
+      // Get the public URL for the resume
+      const { data: publicUrlData } = supabase.storage
+        .from('user_resumes')
+        .getPublicUrl(resumeData.title);
+
+      if (publicUrlData) {
+        console.log('Resume URL:', publicUrlData.publicUrl); // Add this log
+        setResumeUrl(publicUrlData.publicUrl);
+      } else {
+        console.error('Error getting public URL for resume');
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (isResumeContext) {
+      fetchResumeContent();
+    }
+  }, [isResumeContext, supabaseUserId]);
+
   return (
     <div className="flex h-screen w-full overflow-hidden">
       <ChatSidebar
-        chats={chats}
+        chats={chats.map(chat => ({
+          ...chat,
+          timestamp: chat.timestamp || new Date().toISOString(),
+          bucket_path: chat.bucket_path || ''
+        }))}
         activeChat={activeChat}
         onSelectChat={handleSelectChat}
         onNewChat={handleNewChat}
         onDeleteChat={handleDeleteChat}
       />
       <div className="flex-grow flex flex-col h-full overflow-hidden">
-        {activeChat ? (
-          <>
-            <div className="p-4 border-b flex justify-between items-center">
-              <h2 className="text-xl font-bold">
-                {chats.find(chat => chat.id === activeChat)?.title || "Chat"}
-              </h2>
-              <div className="flex items-center">
-                <label className="mr-2">Resume Context:</label>
-                <input
-                  type="checkbox"
-                  checked={isResumeContext}
-                  onChange={(e) => setIsResumeContext(e.target.checked)}
-                />
-                <Button
-                  onClick={() => router.push('/profile')}
-                  className="ml-4"
-                >
-                  Edit Resume
-                </Button>
-              </div>
-            </div>
-            <div className="flex-grow overflow-y-auto p-4 space-y-4">
-              {chats.find(chat => chat.id === activeChat)?.messages?.map((message, index) => (
-                <div
-                  key={`${activeChat}-${index}`}
-                  className={`p-2 rounded-lg flex items-start ${
-                    message.role === "assistant" ? "bg-blue-100" : "bg-gray-100"
-                  }`}
-                >
-                  {message.role === "assistant" ? (
-                    <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white mr-2 flex-shrink-0">
-                      AI
-                    </div>
-                  ) : (
-                    <User className="w-8 h-8 p-1 rounded-full bg-gray-300 mr-2 flex-shrink-0" />
-                  )}
-                  <div className="flex-grow">
-                    <ReactMarkdown
-                      components={{
-                        code({node, inline, className, children, ...props}: any) {
-                          const match = /language-(\w+)/.exec(className || '')
-                          return !inline && match ? (
-                            <SyntaxHighlighter
-                              {...props}
-                              children={String(children).replace(/\n$/, '')}
-                              style={tomorrow}
-                              language={match[1]}
-                              PreTag="div"
-                            />
-                          ) : (
-                            <code {...props} className={className}>
-                              {children}
-                            </code>
-                          )
-                        }
-                      }}
-                    >
-                      {message.content}
-                    </ReactMarkdown>
-                  </div>
-                </div>
-              ))}
-              {streamingMessage && (
-                <div className="p-2 rounded-lg bg-blue-100 flex items-start">
+        <div className="p-4 border-b flex justify-between items-center">
+          <h2 className="text-xl font-bold">
+            {chats.find(chat => chat.id === activeChat)?.title || "Chat"}
+          </h2>
+          <div className="flex items-center">
+            <label className="mr-2">Resume Context:</label>
+            <input
+              type="checkbox"
+              checked={isResumeContext}
+              onChange={(e) => setIsResumeContext(e.target.checked)}
+            />
+            <Button
+              onClick={() => router.push('/profile')}
+              className="ml-4"
+            >
+              Edit Resume
+            </Button>
+          </div>
+        </div>
+        <div className="flex-grow flex overflow-hidden">
+          <div className="flex-grow overflow-y-auto p-4 space-y-4">
+            {chats.find(chat => chat.id === activeChat)?.messages?.map((message, index) => (
+              <div
+                key={`${activeChat}-${index}`}
+                className={`p-2 rounded-lg flex items-start ${
+                  message.role === "assistant" ? "bg-blue-100" : "bg-gray-100"
+                }`}
+              >
+                {message.role === "assistant" ? (
                   <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white mr-2 flex-shrink-0">
                     AI
                   </div>
-                  <div className="flex-grow">
-                    <ReactMarkdown
-                      components={{
-                        code({node, inline, className, children, ...props}: any) {
-                          const match = /language-(\w+)/.exec(className || '')
-                          return !inline && match ? (
-                            <SyntaxHighlighter
-                              {...props}
-                              children={String(children).replace(/\n$/, '')}
-                              style={tomorrow}
-                              language={match[1]}
-                              PreTag="div"
-                            />
-                          ) : (
-                            <code {...props} className={className}>
-                              {children}
-                            </code>
-                          )
-                        }
-                      }}
-                    >
-                      {streamingMessage}
-                    </ReactMarkdown>
-                  </div>
+                ) : (
+                  <User className="w-8 h-8 p-1 rounded-full bg-gray-300 mr-2 flex-shrink-0" />
+                )}
+                <div className="flex-grow">
+                  <ReactMarkdown
+                    components={{
+                      code({node, inline, className, children, ...props}: any) {
+                        const match = /language-(\w+)/.exec(className || '')
+                        return !inline && match ? (
+                          <SyntaxHighlighter
+                            {...props}
+                            children={String(children).replace(/\n$/, '')}
+                            style={tomorrow}
+                            language={match[1]}
+                            PreTag="div"
+                          />
+                        ) : (
+                          <code {...props} className={className}>
+                            {children}
+                          </code>
+                        )
+                      }
+                    }}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
                 </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-            <div className="p-4 border-t flex gap-2">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder={isResumeContext ? "Ask about your resume..." : "Ask me anything..."}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                disabled={isLoading}
-                className="flex-grow"
-              />
-              <Button onClick={handleSend} disabled={isLoading}>
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-          </>
-        ) : (
-          <div className="flex-grow flex items-center justify-center">
-            <p>No active chat. Please create a new chat or select an existing one.</p>
+              </div>
+            ))}
+            {streamingMessage && (
+              <div className="p-2 rounded-lg bg-blue-100 flex items-start">
+                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white mr-2 flex-shrink-0">
+                  AI
+                </div>
+                <div className="flex-grow">
+                  <ReactMarkdown
+                    components={{
+                      code({node, inline, className, children, ...props}: any) {
+                        const match = /language-(\w+)/.exec(className || '')
+                        return !inline && match ? (
+                          <SyntaxHighlighter
+                            {...props}
+                            children={String(children).replace(/\n$/, '')}
+                            style={tomorrow}
+                            language={match[1]}
+                            PreTag="div"
+                          />
+                        ) : (
+                          <code {...props} className={className}>
+                            {children}
+                          </code>
+                        )
+                      }
+                    }}
+                  >
+                    {streamingMessage}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
           </div>
-        )}
+          {isResumeContext && resumeUrl && (
+            <div className="w-1/3 border-l p-4 overflow-y-auto">
+              <h3 className="text-lg font-semibold mb-2">Resume</h3>
+              <PDFViewer pdfUrl={resumeUrl} />
+            </div>
+          )}
+        </div>
+        <div className="p-4 border-t flex gap-2">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={isResumeContext ? "Ask about your resume..." : "Ask me anything..."}
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            disabled={isLoading}
+            className="flex-grow"
+          />
+          <Button onClick={handleSend} disabled={isLoading}>
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -129,25 +129,30 @@ export async function POST(req: NextRequest) {
         // Prepare the stream response
         const stream = new ReadableStream({
             async start(controller) {
-                let fullResponse = '';
-                for await (const chunk of result.stream) {
-                    const chunkText = chunk.text();
-                    fullResponse += chunkText;
-                    controller.enqueue(chunkText);
+                try {
+                    let fullResponse = '';
+                    for await (const chunk of result.stream) {
+                        const chunkText = chunk.text();
+                        fullResponse += chunkText;
+                        controller.enqueue(chunkText);
+                    }
+                    controller.close();
+
+                    // Sanitize the response before saving
+                    const sanitizedResponse = sanitizeUnicode(fullResponse);
+                    // Update chatData with new message and response
+                    chatData.messages.push(
+                        { role: 'user', content: message },
+                        { role: 'assistant', content: sanitizedResponse }
+                    );
+
+                    // Save the updated chat history
+                    const title = chatData.messages[0]?.content?.substring(0, 50) || 'New Chat';
+                    await saveChatHistory(supabaseUserId, currentChatId, title, chatData);
+                } catch (streamError) {
+                    console.error('Error in stream processing:', streamError);
+                    controller.error(streamError);
                 }
-                controller.close();
-
-                // Sanitize the response before saving
-                const sanitizedResponse = sanitizeUnicode(fullResponse);
-                // Update chatData with new message and response
-                chatData.messages.push(
-                    { role: 'user', content: message },
-                    { role: 'assistant', content: sanitizedResponse }
-                );
-
-                // Save the updated chat history
-                const title = chatData.messages[0]?.content?.substring(0, 50) || 'New Chat';
-                await saveChatHistory(supabaseUserId, currentChatId, title, chatData);
             }
         });
 
