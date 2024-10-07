@@ -87,14 +87,29 @@ body {
   }
 }
 
+@media screen and (min-width: 640px) {
+  .resume-editor-container {
+    height: calc(100vh - 100px); /* Adjust based on your layout */
+    overflow: hidden;
+  }
+  .resume-preview {
+    overflow-y: auto;
+    padding-right: 1rem;
+  }
+  .resume-form {
+    overflow-y: auto;
+    padding-right: 1rem;
+  }
+}
+
 @media print {
   body * {
     visibility: hidden;
   }
-  #resume, #resume * {
+  .resume-preview, .resume-preview * {
     visibility: visible;
   }
-  #resume {
+  .resume-preview {
     position: absolute;
     left: 0;
     top: 0;
