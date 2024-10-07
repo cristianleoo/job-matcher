@@ -14,92 +14,64 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(request: Request) {
-  const { userId: clerkUserId } = auth();
-  if (!clerkUserId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
-    // First, fetch the Supabase user ID using the Clerk user ID
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', clerkUserId)
-      .single();
+    const jobData = await request.json();
+    console.log('Received job data:', jobData); // Add this line for debugging
 
-    if (userError || !userData) {
-      console.error('Error fetching Supabase user:', userError);
-      return NextResponse.json({ error: 'Failed to fetch user data' }, { status: 500 });
+    // Validate required fields
+    if (!jobData.title || !jobData.company || !jobData.location || !jobData.description || !jobData.supabaseUserId) {
+      return NextResponse.json({ error: 'Missing required job information' }, { status: 400 });
     }
-
-    const supabaseUserId = userData.id;
-
-    const { jobData, jobUrl } = await request.json();
-
-    console.log('jobData:', jobData);
-    console.log('jobUrl:', jobUrl);
 
     const { data, error } = await supabase
       .from('job_applications')
       .insert({
-        user_id: supabaseUserId,
-        status: 'applied',
-        applied_date: new Date().toISOString(),
-        description: jobData.description,
+        user_id: jobData.supabaseUserId,
         title: jobData.title,
         company: jobData.company,
         location: jobData.location,
-        job_url: jobUrl
+        employment_type: jobData.employment_type,
+        experience_level: jobData.experience_level,
+        remote_type: jobData.remote_type,
+        skills: jobData.skills,
+        responsibilities: jobData.responsibilities,
+        requirements: jobData.requirements,
+        job_url: jobData.job_url,
+        description: jobData.description,
+        status: jobData.status,
+        applied_date: jobData.applied_date,
       })
       .select();
 
-    if (error) {
-      console.error('Supabase error:', error);
-      throw error;
-    }
+    if (error) throw error;
 
-    return NextResponse.json(data);
+    return NextResponse.json(data[0]);
   } catch (error) {
     console.error('Error adding job:', error);
-    return NextResponse.json({ error: `Failed to add job ${error}` }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to add job application' }, { status: 500 });
   }
 }
 
-export const GET = async (request: Request) => {
-  const { userId: clerkUserId } = auth();
-  if (!clerkUserId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const supabaseUserId = searchParams.get('supabaseUserId');
+
+  if (!supabaseUserId) {
+    return NextResponse.json({ error: 'Missing supabaseUserId' }, { status: 400 });
   }
 
   try {
-    // First, fetch the Supabase user ID using the Clerk user ID
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', clerkUserId)
-      .single();
-
-    if (userError || !userData) {
-      console.error('Error fetching Supabase user:', userError);
-      return NextResponse.json({ error: 'Failed to fetch user data' }, { status: 500 });
-    }
-
-    const supabaseUserId = userData.id;
-
-    console.log('Fetching jobs for Supabase user:', supabaseUserId);
-    const { data: jobsData, error: jobsError } = await supabase
+    const { data, error } = await supabase
       .from('job_applications')
       .select('*')
       .eq('user_id', supabaseUserId);
 
-    if (jobsError) {
-      throw jobsError;
-    }
+    if (error) throw error;
 
-    return NextResponse.json(jobsData);
+    return NextResponse.json(data);
   } catch (error) {
-    console.error('Error fetching jobs:', error);
-    return NextResponse.json({ error: 'Failed to fetch jobs' }, { status: 500 });
+    console.error('Error fetching job applications:', error);
+    return NextResponse.json({ error: 'Failed to fetch job applications' }, { status: 500 });
   }
 }
 

@@ -15,12 +15,14 @@ interface JobApplication {
   status: string;
   applied_date: string;
   location: string;
-  employment_type: string;
-  experience_level: string;
-  remote_type: string;
-  skills: string[];
-  responsibilities: string[];
-  requirements: string[];
+  employment_type?: string;
+  experience_level?: string;
+  remote_type?: string;
+  skills?: string[];
+  responsibilities?: string[];
+  requirements?: string[];
+  job_url?: string;
+  description: string;
 }
 
 export function ApplicationTracker() {
@@ -72,10 +74,40 @@ export function ApplicationTracker() {
     }
   };
 
-  const handleJobAdded = () => {
-    setShowSuccessMessage(true);
-    fetchApplications();
-    setTimeout(() => setShowSuccessMessage(false), 3000);
+  const handleJobAdded = async (jobData: JobApplication) => {
+    try {
+      console.log('Job data to be sent:', jobData); // Add this line for debugging
+
+      const response = await fetch('/api/jobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...jobData,
+          supabaseUserId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add job application');
+      }
+
+      const result = await response.json();
+      console.log('Job added successfully:', result); // Add this line for debugging
+
+      setShowSuccessMessage(true);
+      fetchApplications();
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+    } catch (error) {
+      console.error('Error adding job application:', error);
+      if (error instanceof Error) {
+        alert(error.message || 'Failed to add job application');
+      } else {
+        alert('Failed to add job application');
+      }
+    }
   };
 
   const extractJobInfo = async (input: string, type: 'url' | 'content') => {
@@ -100,7 +132,9 @@ Please provide the following information in a JSON format:
   "remote_type": "",
   "skills": [],
   "responsibilities": [],
-  "requirements": []
+  "requirements": [],
+  "job_url": "",
+  "description": ""
 }
 
 Ensure all fields are filled, using "N/A" if the information is not available. For arrays, provide at least one item or ["N/A"] if no information is found.`,
@@ -196,7 +230,9 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
       {showJobForm && extractedJobInfo && (
         <div className="mt-4">
           <h3 className="text-xl font-bold mb-2">Extracted Job Information</h3>
-          <AddJobForm onJobAdded={handleJobAdded} extractedJobInfo={extractedJobInfo} />
+          <AddJobForm onJobAdded={(jobData) => {
+            handleJobAdded({ ...jobData, id: Date.now().toString() }).catch(console.error);
+          }} extractedJobInfo={extractedJobInfo} />
         </div>
       )}
 

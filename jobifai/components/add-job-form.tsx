@@ -1,16 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { useAuth } from '@clerk/nextjs';
-import React from 'react';
-import { useUserStore } from '@/lib/userStore';
+import React, { useState } from 'react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
-interface JobFormData {
+interface JobApplication {
   title: string;
   company: string;
-  status: string;
-  applied_date: string;
   location: string;
   employment_type: string;
   experience_level: string;
@@ -18,155 +13,104 @@ interface JobFormData {
   skills: string[];
   responsibilities: string[];
   requirements: string[];
+  job_url?: string; // Make job_url optional
+  description: string;
+  status: string;
+  applied_date: string;
 }
 
-interface ExtractedJobInfo {
-  job_title?: string;
-  company?: string;
-  location?: string;
-  employment_type?: string;
-  experience_level?: string;
-  remote_type?: string;
-  skills?: string[];
-  responsibilities?: string[];
-  requirements?: string[];
+interface AddJobFormProps {
+  onJobAdded: (jobData: JobApplication) => void;
+  extractedJobInfo: Partial<JobApplication>;
 }
 
-export function AddJobForm({ onJobAdded, extractedJobInfo }: { onJobAdded: () => void, extractedJobInfo: ExtractedJobInfo }) {
-  const [formData, setFormData] = useState<JobFormData>({
-    title: '',
-    company: '',
+export function AddJobForm({ onJobAdded, extractedJobInfo }: AddJobFormProps) {
+  const [jobData, setJobData] = useState<JobApplication>({
+    title: extractedJobInfo.title || '',
+    company: extractedJobInfo.company || '',
+    location: extractedJobInfo.location || '',
+    employment_type: extractedJobInfo.employment_type || '',
+    experience_level: extractedJobInfo.experience_level || '',
+    remote_type: extractedJobInfo.remote_type || '',
+    skills: extractedJobInfo.skills || [],
+    responsibilities: extractedJobInfo.responsibilities || [],
+    requirements: extractedJobInfo.requirements || [],
+    job_url: extractedJobInfo.job_url || '',
+    description: extractedJobInfo.description || '',
     status: 'Applied',
     applied_date: new Date().toISOString().split('T')[0],
-    location: '',
-    employment_type: '',
-    experience_level: '',
-    remote_type: '',
-    skills: [],
-    responsibilities: [],
-    requirements: [],
   });
-
-  const { userId } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const supabaseUserId = useUserStore((state) => state.supabaseUserId);
-
-  useEffect(() => {
-    if (extractedJobInfo) {
-      setFormData(prev => ({
-        ...prev,
-        title: extractedJobInfo.job_title || '',
-        company: extractedJobInfo.company || '',
-        location: extractedJobInfo.location || '',
-        employment_type: extractedJobInfo.employment_type || '',
-        experience_level: extractedJobInfo.experience_level || '',
-        remote_type: extractedJobInfo.remote_type || '',
-        skills: extractedJobInfo.skills || [],
-        responsibilities: extractedJobInfo.responsibilities || [],
-        requirements: extractedJobInfo.requirements || [],
-      }));
-    }
-  }, [extractedJobInfo]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setJobData(prevData => ({ ...prevData, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleArrayInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>, field: 'skills' | 'responsibilities' | 'requirements') => {
+    const values = e.target.value.split('\n').filter(item => item.trim() !== '');
+    setJobData(prevData => ({ ...prevData, [field]: values }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const response = await fetch('/api/jobs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ jobData: formData, supabaseUserId }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add job');
-      }
-
-      // Call the onJobAdded callback
-      onJobAdded();
-    } catch (error) {
-      console.error('Error adding job:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    onJobAdded(jobData);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <Input
-        name="title"
-        placeholder="Job Title"
-        value={formData.title}
-        onChange={handleInputChange}
-        required
-      />
-      <Input
-        name="company"
-        placeholder="Company"
-        value={formData.company}
-        onChange={handleInputChange}
-        required
-      />
-      <Input
-        name="location"
-        placeholder="Location"
-        value={formData.location}
-        onChange={handleInputChange}
-        required
-      />
-      <Input
-        name="employment_type"
-        placeholder="Employment Type"
-        value={formData.employment_type}
-        onChange={handleInputChange}
-        required
-      />
-      <Input
-        name="experience_level"
-        placeholder="Experience Level"
-        value={formData.experience_level}
-        onChange={handleInputChange}
-        required
-      />
-      <Input
-        name="remote_type"
-        placeholder="Remote Type"
-        value={formData.remote_type}
-        onChange={handleInputChange}
-        required
-      />
-      <Textarea
-        name="skills"
-        placeholder="Skills (comma-separated)"
-        value={formData.skills.join(', ')}
-        onChange={(e) => setFormData(prev => ({ ...prev, skills: e.target.value.split(',').map(s => s.trim()) }))}
-        required
-      />
-      <Textarea
-        name="responsibilities"
-        placeholder="Responsibilities (one per line)"
-        value={formData.responsibilities.join('\n')}
-        onChange={(e) => setFormData(prev => ({ ...prev, responsibilities: e.target.value.split('\n').map(s => s.trim()) }))}
-        required
-      />
-      <Textarea
-        name="requirements"
-        placeholder="Requirements (one per line)"
-        value={formData.requirements.join('\n')}
-        onChange={(e) => setFormData(prev => ({ ...prev, requirements: e.target.value.split('\n').map(s => s.trim()) }))}
-        required
-      />
-      <Button type="submit" disabled={isLoading}>
-        {isLoading ? 'Adding...' : 'Add Job'}
-      </Button>
+      <div>
+        <label htmlFor="title" className="block text-sm font-medium text-gray-700">Job Title</label>
+        <Input type="text" id="title" name="title" value={jobData.title} onChange={handleInputChange} required />
+      </div>
+      <div>
+        <label htmlFor="company" className="block text-sm font-medium text-gray-700">Company</label>
+        <Input type="text" id="company" name="company" value={jobData.company} onChange={handleInputChange} required />
+      </div>
+      <div>
+        <label htmlFor="location" className="block text-sm font-medium text-gray-700">Location</label>
+        <Input type="text" id="location" name="location" value={jobData.location} onChange={handleInputChange} required />
+      </div>
+      <div>
+        <label htmlFor="employment_type" className="block text-sm font-medium text-gray-700">Employment Type</label>
+        <Input type="text" id="employment_type" name="employment_type" value={jobData.employment_type} onChange={handleInputChange} />
+      </div>
+      <div>
+        <label htmlFor="experience_level" className="block text-sm font-medium text-gray-700">Experience Level</label>
+        <Input type="text" id="experience_level" name="experience_level" value={jobData.experience_level} onChange={handleInputChange} />
+      </div>
+      <div>
+        <label htmlFor="remote_type" className="block text-sm font-medium text-gray-700">Remote Type</label>
+        <Input type="text" id="remote_type" name="remote_type" value={jobData.remote_type} onChange={handleInputChange} />
+      </div>
+      <div>
+        <label htmlFor="skills" className="block text-sm font-medium text-gray-700">Skills (one per line)</label>
+        <Textarea id="skills" name="skills" value={jobData.skills.join('\n')} onChange={(e) => handleArrayInputChange(e, 'skills')} rows={3} />
+      </div>
+      <div>
+        <label htmlFor="responsibilities" className="block text-sm font-medium text-gray-700">Responsibilities (one per line)</label>
+        <Textarea id="responsibilities" name="responsibilities" value={jobData.responsibilities.join('\n')} onChange={(e) => handleArrayInputChange(e, 'responsibilities')} rows={3} />
+      </div>
+      <div>
+        <label htmlFor="requirements" className="block text-sm font-medium text-gray-700">Requirements (one per line)</label>
+        <Textarea id="requirements" name="requirements" value={jobData.requirements.join('\n')} onChange={(e) => handleArrayInputChange(e, 'requirements')} rows={3} />
+      </div>
+      <div>
+        <label htmlFor="job_url" className="block text-sm font-medium text-gray-700">Job URL (optional)</label>
+        <Input type="url" id="job_url" name="job_url" value={jobData.job_url} onChange={handleInputChange} />
+      </div>
+      <div>
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700">Job Description</label>
+        <Textarea id="description" name="description" value={jobData.description} onChange={handleInputChange} rows={5} required />
+      </div>
+      <div>
+        <label htmlFor="status" className="block text-sm font-medium text-gray-700">Application Status</label>
+        <Input type="text" id="status" name="status" value={jobData.status} onChange={handleInputChange} required />
+      </div>
+      <div>
+        <label htmlFor="applied_date" className="block text-sm font-medium text-gray-700">Applied Date</label>
+        <Input type="date" id="applied_date" name="applied_date" value={jobData.applied_date} onChange={handleInputChange} required />
+      </div>
+      <Button type="submit">Add Job Application</Button>
     </form>
   );
 }
