@@ -6,8 +6,7 @@ import { FaEnvelope, FaPhone, FaMapMarkerAlt, FaLinkedin, FaGlobe, FaTrash } fro
 import { createClient } from '@supabase/supabase-js';
 import { useUser } from '@clerk/nextjs';
 import { useUserStore } from '@/lib/userStore';
-import { Experience, Education, Project } from '../types';
-import { Project } from '../types/project'; // Adjust the import path as needed
+import { Experience, Education, Project } from '@/app/types';
 import axios from 'axios';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
