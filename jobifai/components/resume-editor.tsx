@@ -318,30 +318,30 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
       let currentContent = '';
 
       if (section === 'summary') {
-        prompt = `Rewrite the following professional summary: "${resume.summary}"`;
+        prompt = `Rewrite the following professional summary:`;
         currentContent = resume.summary;
       } else if (section === 'skills') {
-        prompt = `Rewrite and potentially improve the following list of skills: ${resume.skills.join(', ')}`;
+        prompt = `Improve the following list of skills:`;
         currentContent = resume.skills.join(', ');
       } else if (section === 'experience') {
         // For experience, we'll regenerate the most recent job description
         const mostRecentJob = resume.experience[0];
-        prompt = `Rewrite and improve the following job description for the position of ${mostRecentJob.position} at ${mostRecentJob.company}: ${mostRecentJob.description.join(' ')}`;
-        currentContent = mostRecentJob.description.join(' ');
+        prompt = `Improve the following job description for the position of ${mostRecentJob.position} at ${mostRecentJob.company}:`;
+        currentContent = mostRecentJob.description.join('\n');
       }
 
-      const response = await axios.post('/api/generate-content', { prompt, currentContent });
+      const response = await axios.post('/api/generate-content', { prompt, currentContent, section });
       const generatedContent = response.data.generatedContent;
 
       if (section === 'summary') {
         setResume(prev => ({ ...prev, summary: generatedContent }));
       } else if (section === 'skills') {
-        setResume(prev => ({ ...prev, skills: generatedContent.split(', ') }));
+        setResume(prev => ({ ...prev, skills: generatedContent.split(', ').map(skill => skill.trim()) }));
       } else if (section === 'experience') {
         setResume(prev => ({
           ...prev,
           experience: prev.experience.map((exp, index) => 
-            index === 0 ? { ...exp, description: generatedContent.split('. ') } : exp
+            index === 0 ? { ...exp, description: generatedContent.split('\n').map(item => item.trim()) } : exp
           )
         }));
       }
