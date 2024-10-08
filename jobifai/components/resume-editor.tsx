@@ -33,6 +33,7 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
     projects: [] as Project[],
   });
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [hiddenSections, setHiddenSections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (user && supabaseUserId) {
@@ -298,6 +299,18 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
     }));
   };
 
+  const toggleSection = (section: string) => {
+    setHiddenSections(prev => {
+      const newHidden = new Set(prev);
+      if (newHidden.has(section)) {
+        newHidden.delete(section);
+      } else {
+        newHidden.add(section);
+      }
+      return newHidden;
+    });
+  };
+
   return (
     <div className="flex space-x-4">
       {/* Resume Preview */}
@@ -310,12 +323,12 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
             <span className="flex items-center"><FaMapMarkerAlt className="mr-2" />{resume.location}</span>
           </div>
           <div className="flex justify-center space-x-4 mt-2 text-gray-600">
-            {resume.linkedin && (
+            {!hiddenSections.has('linkedin') && resume.linkedin && (
               <a href={resume.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center">
                 <FaLinkedin className="mr-2" />LinkedIn
               </a>
             )}
-            {resume.portfolio && (
+            {!hiddenSections.has('portfolio') && resume.portfolio && (
               <a href={resume.portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center">
                 <FaGlobe className="mr-2" />Portfolio
               </a>
@@ -323,7 +336,7 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
           </div>
         </div>
 
-        {resume.summary !== undefined && (
+        {!hiddenSections.has('summary') && resume.summary && (
           <section className="mb-6">
             <h2 className="text-2xl font-semibold mb-3 border-b-2 border-gray-300 pb-1">Professional Summary</h2>
             <p>{resume.summary}</p>
@@ -359,25 +372,29 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
           ))}
         </section>
 
-        <section className="mb-6">
-          <h2 className="text-2xl font-semibold mb-3 border-b-2 border-gray-300 pb-1">Skills</h2>
-          <p>{resume.skills.join(', ')}</p>
-        </section>
+        {!hiddenSections.has('skills') && (
+          <section className="mb-6">
+            <h2 className="text-2xl font-semibold mb-3 border-b-2 border-gray-300 pb-1">Skills</h2>
+            <p>{resume.skills.join(', ')}</p>
+          </section>
+        )}
 
-        <section className="mb-6">
-          <h2 className="text-2xl font-semibold mb-3 border-b-2 border-gray-300 pb-1">Projects</h2>
-          {resume.projects.map((project, index) => (
-            <div key={index} className="mb-4">
-              <h3 className="text-xl font-semibold">{project.name}</h3>
-              <ul className="list-disc pl-5">
-                {project.description.map((item, i) => (
-                  <li key={i}>{item}</li>
-                ))}
-              </ul>
-              <p className="text-gray-600 mt-2">Technologies: {project.technologies.join(', ')}</p>
-            </div>
-          ))}
-        </section>
+        {!hiddenSections.has('projects') && (
+          <section className="mb-6">
+            <h2 className="text-2xl font-semibold mb-3 border-b-2 border-gray-300 pb-1">Projects</h2>
+            {resume.projects.map((project, index) => (
+              <div key={index} className="mb-4">
+                <h3 className="text-xl font-semibold">{project.name}</h3>
+                <ul className="list-disc pl-5">
+                  {project.description.map((item, i) => (
+                    <li key={i}>{item}</li>
+                  ))}
+                </ul>
+                <p className="text-gray-600 mt-2">Technologies: {project.technologies.join(', ')}</p>
+              </div>
+            ))}
+          </section>
+        )}
       </div>
 
       {/* Edit Form */}
@@ -402,47 +419,46 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
           onChange={(e) => handleInputChange('location', e.target.value)}
           placeholder="Location"
         />
-        {resume.linkedin && (
-          <div className="flex items-center space-x-2">
-            <Input
-              value={resume.linkedin}
-              onChange={(e) => handleInputChange('linkedin', e.target.value)}
-              placeholder="LinkedIn URL"
-            />
-            <Button onClick={() => deleteField('linkedin')} className="bg-red-500 hover:bg-red-600 text-white">
-              <FaTrash />
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center space-x-2">
+          <Input
+            value={resume.linkedin}
+            onChange={(e) => handleInputChange('linkedin', e.target.value)}
+            placeholder="LinkedIn URL"
+          />
+          <Button onClick={() => toggleSection('linkedin')} className="bg-blue-500 hover:bg-blue-600 text-white">
+            {hiddenSections.has('linkedin') ? 'Show' : 'Hide'}
+          </Button>
+        </div>
 
-        {resume.portfolio && (
-          <div className="flex items-center space-x-2">
-            <Input
-              value={resume.portfolio}
-              onChange={(e) => handleInputChange('portfolio', e.target.value)}
-              placeholder="Portfolio URL"
-            />
-            <Button onClick={() => deleteField('portfolio')} className="bg-red-500 hover:bg-red-600 text-white">
-              <FaTrash />
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center space-x-2">
+          <Input
+            value={resume.portfolio}
+            onChange={(e) => handleInputChange('portfolio', e.target.value)}
+            placeholder="Portfolio URL"
+          />
+          <Button onClick={() => toggleSection('portfolio')} className="bg-blue-500 hover:bg-blue-600 text-white">
+            {hiddenSections.has('portfolio') ? 'Show' : 'Hide'}
+          </Button>
+        </div>
 
-        {resume.summary !== undefined && (
-          <div className="flex items-center space-x-2">
-            <Textarea
-              value={resume.summary || ''}
-              onChange={(e) => handleInputChange('summary', e.target.value)}
-              placeholder="Professional Summary"
-              rows={4}
-            />
-            <Button onClick={() => deleteField('summary')} className="bg-red-500 hover:bg-red-600 text-white">
-              <FaTrash />
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center space-x-2">
+          <Textarea
+            value={resume.summary || ''}
+            onChange={(e) => handleInputChange('summary', e.target.value)}
+            placeholder="Professional Summary"
+            rows={4}
+          />
+          <Button onClick={() => toggleSection('summary')} className="bg-blue-500 hover:bg-blue-600 text-white">
+            {hiddenSections.has('summary') ? 'Show' : 'Hide'}
+          </Button>
+        </div>
 
-        <h3 className="text-xl font-semibold">Skills</h3>
+        <div className="flex items-center space-x-2">
+          <h3 className="text-xl font-semibold">Skills</h3>
+          <Button onClick={() => toggleSection('skills')} className="bg-blue-500 hover:bg-blue-600 text-white">
+            {hiddenSections.has('skills') ? 'Show' : 'Hide'}
+          </Button>
+        </div>
         <div className="space-y-2">
           {resume.skills.map((skill, index) => (
             <div key={index} className="flex items-center space-x-2">
@@ -525,7 +541,12 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
           </div>
         ))}
 
-        <h3 className="text-xl font-semibold">Projects</h3>
+        <div className="flex items-center space-x-2">
+          <h3 className="text-xl font-semibold">Projects</h3>
+          <Button onClick={() => toggleSection('projects')} className="bg-blue-500 hover:bg-blue-600 text-white">
+            {hiddenSections.has('projects') ? 'Show' : 'Hide'}
+          </Button>
+        </div>
         {resume.projects.map((project, index) => (
           <div key={index} className="space-y-2 border p-4 rounded">
             <Input
