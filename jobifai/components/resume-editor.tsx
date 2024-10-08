@@ -272,13 +272,29 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
   };
 
   const deleteField = (field: string) => {
-    setResume(prev => ({ ...prev, [field]: field === 'skills' ? [] : '' }));
+    setResume(prev => {
+      const newResume = { ...prev };
+      if (field === 'linkedin' || field === 'portfolio' || field === 'summary') {
+        delete newResume[field];
+      } else if (field === 'skills') {
+        newResume.skills = [];
+      }
+      return newResume;
+    });
   };
 
   const deleteSkill = (index: number) => {
     setResume(prev => ({
       ...prev,
       skills: prev.skills.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Add this function near your other handler functions
+  const addField = (field: string) => {
+    setResume(prev => ({
+      ...prev,
+      [field]: field === 'skills' ? [] : ''
     }));
   };
 
@@ -294,19 +310,25 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
             <span className="flex items-center"><FaMapMarkerAlt className="mr-2" />{resume.location}</span>
           </div>
           <div className="flex justify-center space-x-4 mt-2 text-gray-600">
-            <a href={resume.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center">
-              <FaLinkedin className="mr-2" />LinkedIn
-            </a>
-            <a href={resume.portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center">
-              <FaGlobe className="mr-2" />Portfolio
-            </a>
+            {resume.linkedin && (
+              <a href={resume.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center">
+                <FaLinkedin className="mr-2" />LinkedIn
+              </a>
+            )}
+            {resume.portfolio && (
+              <a href={resume.portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center">
+                <FaGlobe className="mr-2" />Portfolio
+              </a>
+            )}
           </div>
         </div>
 
-        <section className="mb-6">
-          <h2 className="text-2xl font-semibold mb-3 border-b-2 border-gray-300 pb-1">Professional Summary</h2>
-          <p>{resume.summary}</p>
-        </section>
+        {resume.summary !== undefined && (
+          <section className="mb-6">
+            <h2 className="text-2xl font-semibold mb-3 border-b-2 border-gray-300 pb-1">Professional Summary</h2>
+            <p>{resume.summary}</p>
+          </section>
+        )}
 
         <section className="mb-6">
           <h2 className="text-2xl font-semibold mb-3 border-b-2 border-gray-300 pb-1">Experience</h2>
@@ -380,39 +402,45 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
           onChange={(e) => handleInputChange('location', e.target.value)}
           placeholder="Location"
         />
-        <div className="flex items-center space-x-2">
-          <Input
-            value={resume.linkedin}
-            onChange={(e) => handleInputChange('linkedin', e.target.value)}
-            placeholder="LinkedIn URL"
-          />
-          <Button onClick={() => deleteField('linkedin')} className="bg-red-500 hover:bg-red-600 text-white">
-            <FaTrash />
-          </Button>
-        </div>
+        {resume.linkedin && (
+          <div className="flex items-center space-x-2">
+            <Input
+              value={resume.linkedin}
+              onChange={(e) => handleInputChange('linkedin', e.target.value)}
+              placeholder="LinkedIn URL"
+            />
+            <Button onClick={() => deleteField('linkedin')} className="bg-red-500 hover:bg-red-600 text-white">
+              <FaTrash />
+            </Button>
+          </div>
+        )}
 
-        <div className="flex items-center space-x-2">
-          <Input
-            value={resume.portfolio}
-            onChange={(e) => handleInputChange('portfolio', e.target.value)}
-            placeholder="Portfolio URL"
-          />
-          <Button onClick={() => deleteField('portfolio')} className="bg-red-500 hover:bg-red-600 text-white">
-            <FaTrash />
-          </Button>
-        </div>
+        {resume.portfolio && (
+          <div className="flex items-center space-x-2">
+            <Input
+              value={resume.portfolio}
+              onChange={(e) => handleInputChange('portfolio', e.target.value)}
+              placeholder="Portfolio URL"
+            />
+            <Button onClick={() => deleteField('portfolio')} className="bg-red-500 hover:bg-red-600 text-white">
+              <FaTrash />
+            </Button>
+          </div>
+        )}
 
-        <div className="flex items-center space-x-2">
-          <Textarea
-            value={resume.summary}
-            onChange={(e) => handleInputChange('summary', e.target.value)}
-            placeholder="Professional Summary"
-            rows={4}
-          />
-          <Button onClick={() => deleteField('summary')} className="bg-red-500 hover:bg-red-600 text-white">
-            <FaTrash />
-          </Button>
-        </div>
+        {resume.summary !== undefined && (
+          <div className="flex items-center space-x-2">
+            <Textarea
+              value={resume.summary || ''}
+              onChange={(e) => handleInputChange('summary', e.target.value)}
+              placeholder="Professional Summary"
+              rows={4}
+            />
+            <Button onClick={() => deleteField('summary')} className="bg-red-500 hover:bg-red-600 text-white">
+              <FaTrash />
+            </Button>
+          </div>
+        )}
 
         <h3 className="text-xl font-semibold">Skills</h3>
         <div className="space-y-2">
@@ -541,6 +569,23 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
             ))}
           </ul>
         </div>
+
+        {/* Add these buttons after the existing input fields in the edit form */}
+        {resume.linkedin === undefined && (
+          <Button onClick={() => addField('linkedin')} className="bg-green-500 hover:bg-green-600 text-white">
+            Add LinkedIn
+          </Button>
+        )}
+        {resume.portfolio === undefined && (
+          <Button onClick={() => addField('portfolio')} className="bg-green-500 hover:bg-green-600 text-white">
+            Add Portfolio
+          </Button>
+        )}
+        {resume.summary === undefined && (
+          <Button onClick={() => addField('summary')} className="bg-green-500 hover:bg-green-600 text-white">
+            Add Professional Summary
+          </Button>
+        )}
       </div>
     </div>
   );
