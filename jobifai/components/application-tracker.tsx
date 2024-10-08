@@ -27,7 +27,10 @@ interface JobApplication {
 }
 
 interface UserProfile {
-  experience: Experience[];
+  id: string;
+  name: string;
+  email: string;
+  experiences: Experience[];
   education: Education[];
   skills: string[];
   projects: Project[];
@@ -38,7 +41,7 @@ interface Experience {
   position: string;
   startDate: string;
   endDate: string;
-  description: string;
+  description: string[];
 }
 
 interface Education {
@@ -49,7 +52,7 @@ interface Education {
 
 interface Project {
   name: string;
-  description: string;
+  description: string[];
   technologies: string[];
 }
 
@@ -390,7 +393,14 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
             <h2 className="text-2xl font-bold mb-4">Edit Resume for {selectedJob.title}</h2>
             <ResumeEditor
               jobDescription={selectedJob.description}
-              userProfile={userProfile}
+              userProfile={{ 
+                id: userProfile.id, 
+                name: userProfile.name, 
+                email: userProfile.email, 
+                experiences: userProfile.experiences, // ... existing code ...
+                education: userProfile.education, // Added missing property
+                projects: userProfile.projects // Added missing property
+              }}
               onSave={handleSaveResume}
             />
             <button
