@@ -8,6 +8,7 @@ import { useUser } from '@clerk/nextjs';
 import { useUserStore } from '@/lib/userStore';
 import { Experience, Education, Project } from '@/app/types';
 import axios from 'axios';
+import { calculateSimilarity } from '@/lib/utils';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
@@ -34,6 +35,7 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
   });
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [hiddenSections, setHiddenSections] = useState<Set<string>>(new Set());
+  const [similarityScore, setSimilarityScore] = useState<number>(0);
 
   useEffect(() => {
     if (user && supabaseUserId) {
@@ -45,6 +47,11 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
     const generatedSuggestions = generateSuggestions(jobDescription, resume);
     setSuggestions(generatedSuggestions);
   }, [jobDescription, resume]);
+
+  useEffect(() => {
+    const score = calculateSimilarity(resume, jobDescription);
+    setSimilarityScore(score);
+  }, [resume, jobDescription]);
 
   const fetchUserProfile = async () => {
     try {
@@ -433,6 +440,17 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
             ))}
           </section>
         )}
+
+        {/* Add this section for the similarity score */}
+        <div className="mt-6 bg-blue-100 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold mb-2">Resume-Job Posting Similarity:</h3>
+          <div className="flex items-center">
+            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mr-2">
+              <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${similarityScore * 100}%` }}></div>
+            </div>
+            <span className="text-sm font-medium text-blue-700 dark:text-white">{(similarityScore * 100).toFixed(2)}%</span>
+          </div>
+        </div>
       </div>
 
       {/* Edit Form */}
