@@ -6,18 +6,18 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 export async function POST(req: Request) {
-  const { prompt, currentContent, section } = await req.json();
+  const { prompt, currentContent, section, jobDescription } = await req.json();
 
   try {
     const chat = model.startChat({
       history: [
         {
           role: "user",
-          parts: [{ text: "You are a helpful assistant that rewrites and improves resume content. Please provide only the improved content without any additional explanations or formatting." }],
+          parts: [{ text: "You are a helpful assistant that tailors resume content to job descriptions. Only use information provided in the resume. Do not invent or assume any new information." }],
         },
         {
           role: "model",
-          parts: [{ text: "Understood. I'll provide only the improved content for the resume section you specify, maintaining the expected format." }],
+          parts: [{ text: "Understood. I'll tailor the resume content to the job description using only the information provided, without inventing or assuming any new details." }],
         },
       ],
     });
@@ -25,19 +25,19 @@ export async function POST(req: Request) {
     let systemPrompt = "";
     switch (section) {
       case 'summary':
-        systemPrompt = "Rewrite the following professional summary. Provide only the improved summary text:";
+        systemPrompt = "Create a brief professional summary that highlights why the candidate is a good fit for the position based on their resume and the job description. Do not invent new information:";
         break;
       case 'skills':
-        systemPrompt = "Improve the following list of skills. Provide only a comma-separated list of skills:";
+        systemPrompt = "Provide a comma-separated list of the most relevant skills from the resume that match the job description. Only include skills mentioned in the resume:";
         break;
       case 'experience':
-        systemPrompt = "Improve the following job description. Provide only bullet points, each starting with a bullet point character (•):";
+        systemPrompt = "Improve the job description to better match the job posting. Only use information provided in the original description:";
         break;
       default:
         throw new Error("Invalid section specified");
     }
 
-    const result = await chat.sendMessage(`${systemPrompt}\n\nCurrent content:\n${currentContent}\n\nImproved content:`);
+    const result = await chat.sendMessage(`${systemPrompt}\n\nJob Description:\n${jobDescription}\n\nCurrent Content:\n${currentContent}\n\nImproved Content:`);
     const response = await result.response;
     const generatedContent = response.text().trim();
 

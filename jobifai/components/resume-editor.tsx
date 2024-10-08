@@ -318,19 +318,18 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
       let currentContent = '';
 
       if (section === 'summary') {
-        prompt = `Rewrite the following professional summary:`;
-        currentContent = resume.summary;
+        prompt = `Based on the following resume content and job description, create a brief professional summary that highlights why the candidate is a good fit for the position. Do not invent new information:`;
+        currentContent = `Resume: ${JSON.stringify(resume)}\n\nJob Description: ${jobDescription}`;
       } else if (section === 'skills') {
-        prompt = `Improve the following list of skills:`;
-        currentContent = resume.skills.join(', ');
+        prompt = `Based on the following resume skills and job description, provide a comma-separated list of the most relevant skills. Only include skills that are mentioned in the resume:`;
+        currentContent = `Current Skills: ${resume.skills.join(', ')}\n\nJob Description: ${jobDescription}`;
       } else if (section === 'experience') {
-        // For experience, we'll regenerate the most recent job description
         const mostRecentJob = resume.experience[0];
-        prompt = `Improve the following job description for the position of ${mostRecentJob.position} at ${mostRecentJob.company}:`;
-        currentContent = mostRecentJob.description.join('\n');
+        prompt = `Improve the following job description to better match the job posting. Only use information provided in the original description:`;
+        currentContent = `Current Job Description for ${mostRecentJob.position} at ${mostRecentJob.company}:\n${mostRecentJob.description.join('\n')}\n\nJob Posting: ${jobDescription}`;
       }
 
-      const response = await axios.post('/api/generate-content', { prompt, currentContent, section });
+      const response = await axios.post('/api/generate-content', { prompt, currentContent, section, jobDescription });
       const generatedContent = response.data.generatedContent;
 
       if (section === 'summary') {
