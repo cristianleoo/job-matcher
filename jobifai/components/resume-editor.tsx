@@ -3,124 +3,122 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FaEnvelope, FaPhone, FaMapMarkerAlt, FaLinkedin, FaGlobe, FaTrash } from 'react-icons/fa';
+import { createClient } from '@supabase/supabase-js';
+import { useUser } from '@clerk/nextjs';
+import { useUserStore } from '@/lib/userStore';
+import { Experience, Education, Project } from '../types';
+import { Project } from '../types/project'; // Adjust the import path as needed
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
 interface ResumeEditorProps {
   jobDescription: string;
-  userProfile: UserProfile;
   onSave: (updatedResume: string) => void;
 }
 
-interface UserProfile {
-  name: string;
-  email: string;
-  phone: string;
-  location: string;
-  linkedin: string;
-  portfolio: string;
-  summary: string;
-  experience: Experience[];
-  education: Education[];
-  skills: string[];
-  projects: Project[];
-}
-
-interface Experience {
-  company: string;
-  position: string;
-  startDate: string;
-  endDate: string;
-  description: string[];
-}
-
-interface Education {
-  institution: string;
-  degree: string;
-  graduationDate: string;
-}
-
-interface Project {
-  name: string;
-  description: string[];
-  technologies: string[];
-}
-
-// First, define the interfaces
-interface ResumeEditorProps {
-  jobDescription: string;
-  userProfile: UserProfile;
-  onSave: (updatedResume: string) => void;
-}
-
-interface UserProfile {
-  name: string;
-  email: string;
-  phone: string;
-  location: string;
-  linkedin: string;
-  portfolio: string;
-  summary: string;
-  experience: Experience[];
-  education: Education[];
-  skills: string[];
-  projects: Project[];
-}
-
-interface Experience {
-  company: string;
-  position: string;
-  startDate: string;
-  endDate: string;
-  description: string[];
-}
-
-interface Education {
-  institution: string;
-  degree: string;
-  graduationDate: string;
-}
-
-interface Project {
-  name: string;
-  description: string[];
-  technologies: string[];
-}
-
-// Then, define the utility functions
-const splitBulletPoints = (text: string): string[] => {
-  return text.split('\n')
-    .map(item => item.trim())
-    .filter(item => item !== '')
-    .map(item => item.replace(/^[•\-]\s*/, '')); // Remove leading bullet points or dashes
-};
-
-// Now, define the ResumeEditor component
-export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEditorProps) {
-  const [resume, setResume] = useState<UserProfile>({
-    name: userProfile.name || '',
-    email: userProfile.email || '',
-    phone: userProfile.phone || '',
-    location: userProfile.location || '',
-    linkedin: userProfile.linkedin || '',
-    portfolio: userProfile.portfolio || '',
-    summary: userProfile.summary || '',
-    experience: userProfile.experience.map(exp => ({
-      ...exp,
-      description: Array.isArray(exp.description) 
-        ? exp.description 
-        : splitBulletPoints(exp.description as string)
-    })) || [],
-    education: userProfile.education || [],
-    skills: userProfile.skills || [],
-    projects: userProfile.projects || []
+export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
+  const { user } = useUser();
+  const supabaseUserId = useUserStore((state) => state.supabaseUserId);
+  const [resume, setResume] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    location: '',
+    linkedin: '',
+    portfolio: '',
+    summary: '',
+    experience: [] as Experience[],
+    education: [] as Education[],
+    skills: [] as string[],
+    projects: [] as Project[],
   });
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
-    const generatedSuggestions = generateSuggestions(jobDescription, userProfile);
-    setSuggestions(generatedSuggestions);
-  }, [jobDescription, userProfile]);
+    if (user && supabaseUserId) {
+      fetchUserProfile();
+    }
+  }, [user, supabaseUserId]);
 
-  const generateSuggestions = (jobDesc: string, profile: UserProfile): string[] => {
+  useEffect(() => {
+    const generatedSuggestions = generateSuggestions(jobDescription, resume);
+    setSuggestions(generatedSuggestions);
+  }, [jobDescription, resume]);
+
+  const fetchUserProfile = async () => {
+    try {
+      // Fetch user data
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', supabaseUserId)
+        .single();
+
+      if (userError) throw userError;
+
+      // Fetch skills
+      const { data: skillsData, error: skillsError } = await supabase
+        .from('user_skills')
+        .select('skills(name)')
+        .eq('user_id', supabaseUserId);
+
+      if (skillsError) throw skillsError;
+
+      // Fetch work experience
+      const { data: workExpData, error: workExpError } = await supabase
+        .from('work_experience')
+        .select('*')
+        .eq('user_id', supabaseUserId);
+
+      if (workExpError) throw workExpError;
+
+      // Fetch education
+      const { data: educationData, error: educationError } = await supabase
+        .from('education')
+        .select('*')
+        .eq('user_id', supabaseUserId);
+
+      if (educationError) throw educationError;
+
+      // Fetch portfolio links
+      const { data: portfolioData, error: portfolioError } = await supabase
+        .from('portfolio_links')
+        .select('*')
+        .eq('user_id', supabaseUserId);
+
+      if (portfolioError) throw portfolioError;
+
+      // Update the resume state with fetched data
+      setResume({
+        name: userData.full_name || '',
+        email: userData.email || '',
+        phone: userData.phone || '',
+        location: userData.location || '',
+        linkedin: userData.linkedin_profile || '',
+        portfolio: userData.personal_website || '',
+        summary: '', // Add a summary field to the users table if needed
+        experience: workExpData.map((exp: any) => ({
+          company: exp.company,
+          position: exp.position,
+          startDate: exp.start_date,
+          endDate: exp.end_date,
+          description: exp.description.split('\n'),
+        })),
+        education: educationData.map((edu: any) => ({
+          institution: edu.institution,
+          degree: edu.degree,
+          fieldOfStudy: edu.field_of_study,
+          graduationDate: edu.graduation_date,
+        })),
+        skills: skillsData?.flatMap((item: any) => item.skills?.name || []) || [],
+        projects: [], // Add a projects table if needed
+      });
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+
+  const generateSuggestions = (jobDesc: string, profile: typeof resume): string[] => {
     const keywords = extractKeywords(jobDesc);
     return [
       `Consider highlighting these skills: ${keywords.join(', ')}`,
@@ -134,12 +132,84 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
     return text.toLowerCase().split(/\W+/).filter(word => word.length > 2 && !commonWords.has(word));
   };
 
-  const handleSave = () => {
-    onSave(JSON.stringify(resume));
-  };
+  const handleSave = async () => {
+    try {
+      // Update user information
+      await supabase
+        .from('users')
+        .update({
+          full_name: resume.name,
+          email: resume.email,
+          phone: resume.phone,
+          location: resume.location,
+          linkedin_profile: resume.linkedin,
+          personal_website: resume.portfolio,
+        })
+        .eq('id', supabaseUserId);
 
-  const handlePrint = () => {
-    window.print();
+      // Update skills
+      await supabase
+        .from('user_skills')
+        .delete()
+        .eq('user_id', supabaseUserId);
+
+      for (const skill of resume.skills) {
+        const { data: skillData } = await supabase
+          .from('skills')
+          .upsert({ name: skill }, { onConflict: 'name' })
+          .select('id')
+          .single();
+
+        await supabase
+          .from('user_skills')
+          .insert({
+            user_id: supabaseUserId,
+            skill_id: skillData!.id,
+            proficiency_level: 3, // Default level
+          });
+      }
+
+      // Update work experience
+      await supabase
+        .from('work_experience')
+        .delete()
+        .eq('user_id', supabaseUserId);
+
+      for (const exp of resume.experience) {
+        await supabase
+          .from('work_experience')
+          .insert({
+            user_id: supabaseUserId,
+            company: exp.company,
+            position: exp.position,
+            start_date: exp.startDate,
+            end_date: exp.endDate,
+            description: exp.description.join('\n'),
+          });
+      }
+
+      // Update education
+      await supabase
+        .from('education')
+        .delete()
+        .eq('user_id', supabaseUserId);
+
+      for (const edu of resume.education) {
+        await supabase
+          .from('education')
+          .insert({
+            user_id: supabaseUserId,
+            institution: edu.institution,
+            degree: edu.degree,
+            field_of_study: edu.fieldOfStudy,
+            graduation_date: edu.graduationDate,
+          });
+      }
+
+      onSave(JSON.stringify(resume));
+    } catch (error) {
+      console.error('Error saving resume:', error);
+    }
   };
 
   const handleInputChange = (field: string, value: string | string[]) => {
@@ -412,13 +482,15 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
 
         <div className="flex space-x-4 justify-center mt-6">
           <Button onClick={handleSave} className="bg-blue-500 hover:bg-blue-600 text-white">Save Resume</Button>
-          <Button onClick={handlePrint} className="bg-green-500 hover:bg-green-600 text-white">Print / Save as PDF</Button>
+          <Button onClick={() => window.print()} className="bg-green-500 hover:bg-green-600 text-white">Print / Save as PDF</Button>
         </div>
 
         <div className="mt-4 bg-gray-100 p-4 rounded-lg">
           <h3 className="text-lg font-semibold mb-2">Suggestions:</h3>
           <ul className="list-disc pl-5">
-            {/* Your list items go here */}
+            {suggestions.map((suggestion, index) => (
+              <li key={index}>{suggestion}</li>
+            ))}
           </ul>
         </div>
       </div>
