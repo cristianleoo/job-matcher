@@ -224,7 +224,7 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
           ? { 
               ...exp, 
               [field]: field === 'description' 
-                ? (typeof value === 'string' ? splitBulletPoints(value) : value)
+                ? (typeof value === 'string' ? value.split('\n').map(item => item.trim().replace(/^[•-]\s*/, '')) : value)
                 : value 
             } 
           : exp
@@ -306,7 +306,7 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
               <p className="text-gray-600 mb-2">{`${exp.startDate} - ${exp.endDate}`}</p>
               <ul className="list-disc pl-5">
                 {exp.description.map((item, i) => (
-                  <li key={i} className="mb-1">{item}</li>
+                  <li key={i} className="mb-1">{item.replace(/^[•-]\s*/, '')}</li>
                 ))}
               </ul>
             </div>
@@ -412,7 +412,7 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
               />
             </div>
             <Textarea
-              value={exp.description.map(item => `• ${item}`).join('\n')}
+              value={exp.description.map(item => `• ${item.replace(/^[•-]\s*/, '')}`).join('\n')}
               onChange={(e) => handleExperienceChange(index, 'description', e.target.value)}
               placeholder="Description (one bullet point per line)"
               rows={5}
