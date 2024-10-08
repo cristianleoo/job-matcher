@@ -311,10 +311,36 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
     });
   };
 
+  const regenerateSection = async (section: 'summary' | 'skills' | 'experience') => {
+    // Placeholder function for content regeneration
+    // In a real implementation, this would call an AI service to generate content
+    console.log(`Regenerating ${section}`);
+    // For now, let's just add a placeholder item
+    if (section === 'summary') {
+      setResume(prev => ({ ...prev, summary: 'Regenerated summary placeholder' }));
+    } else if (section === 'skills') {
+      setResume(prev => ({ ...prev, skills: [...prev.skills, 'New Skill'] }));
+    } else if (section === 'experience') {
+      setResume(prev => ({
+        ...prev,
+        experience: [
+          ...prev.experience,
+          {
+            company: 'New Company',
+            position: 'New Position',
+            startDate: 'Start Date',
+            endDate: 'End Date',
+            description: ['New job description']
+          }
+        ]
+      }));
+    }
+  };
+
   return (
-    <div className="flex space-x-4">
+    <div className="flex space-x-4 h-screen">
       {/* Resume Preview */}
-      <div className="w-1/2 bg-white p-8 shadow-lg">
+      <div className="w-1/2 bg-white p-8 shadow-lg overflow-y-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-2">{resume.name}</h1>
           <div className="flex justify-center space-x-4 text-gray-600">
@@ -398,7 +424,7 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
       </div>
 
       {/* Edit Form */}
-      <div className="w-1/2 space-y-4 overflow-y-auto h-screen pb-20">
+      <div className="w-1/2 space-y-4 overflow-y-auto pb-20 max-h-screen">
         <Input
           value={resume.name}
           onChange={(e) => handleInputChange('name', e.target.value)}
@@ -442,21 +468,28 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
         </div>
 
         <div className="flex items-center space-x-2">
-          <Textarea
-            value={resume.summary || ''}
-            onChange={(e) => handleInputChange('summary', e.target.value)}
-            placeholder="Professional Summary"
-            rows={4}
-          />
+          <h3 className="text-xl font-semibold">Professional Summary</h3>
           <Button onClick={() => toggleSection('summary')} className="bg-blue-500 hover:bg-blue-600 text-white">
             {hiddenSections.has('summary') ? 'Show' : 'Hide'}
           </Button>
+          <Button onClick={() => regenerateSection('summary')} className="bg-green-500 hover:bg-green-600 text-white">
+            Regenerate
+          </Button>
         </div>
+        <Textarea
+          value={resume.summary || ''}
+          onChange={(e) => handleInputChange('summary', e.target.value)}
+          placeholder="Professional Summary"
+          rows={4}
+        />
 
         <div className="flex items-center space-x-2">
           <h3 className="text-xl font-semibold">Skills</h3>
           <Button onClick={() => toggleSection('skills')} className="bg-blue-500 hover:bg-blue-600 text-white">
             {hiddenSections.has('skills') ? 'Show' : 'Hide'}
+          </Button>
+          <Button onClick={() => regenerateSection('skills')} className="bg-green-500 hover:bg-green-600 text-white">
+            Regenerate
           </Button>
         </div>
         <div className="space-y-2">
@@ -480,7 +513,12 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
           </Button>
         </div>
 
-        <h3 className="text-xl font-semibold">Experience</h3>
+        <div className="flex items-center space-x-2">
+          <h3 className="text-xl font-semibold">Experience</h3>
+          <Button onClick={() => regenerateSection('experience')} className="bg-green-500 hover:bg-green-600 text-white">
+            Regenerate
+          </Button>
+        </div>
         {resume.experience.map((exp, index) => (
           <div key={index} className="space-y-2 border p-4 rounded">
             <Input
