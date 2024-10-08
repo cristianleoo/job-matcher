@@ -44,6 +44,56 @@ interface Project {
   technologies: string[];
 }
 
+// First, define the interfaces
+interface ResumeEditorProps {
+  jobDescription: string;
+  userProfile: UserProfile;
+  onSave: (updatedResume: string) => void;
+}
+
+interface UserProfile {
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  linkedin: string;
+  portfolio: string;
+  summary: string;
+  experience: Experience[];
+  education: Education[];
+  skills: string[];
+  projects: Project[];
+}
+
+interface Experience {
+  company: string;
+  position: string;
+  startDate: string;
+  endDate: string;
+  description: string[];
+}
+
+interface Education {
+  institution: string;
+  degree: string;
+  graduationDate: string;
+}
+
+interface Project {
+  name: string;
+  description: string[];
+  technologies: string[];
+}
+
+// Then, define the utility functions
+const splitBulletPoints = (text: string): string[] => {
+  return text.split('\n')
+    .map(item => item.trim())
+    .filter(item => item !== '')
+    .map(item => item.replace(/^[•\-]\s*/, '')); // Remove leading bullet points or dashes
+};
+
+// Now, define the ResumeEditor component
 export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEditorProps) {
   const [resume, setResume] = useState<UserProfile>({
     name: userProfile.name || '',
@@ -53,7 +103,12 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
     linkedin: userProfile.linkedin || '',
     portfolio: userProfile.portfolio || '',
     summary: userProfile.summary || '',
-    experience: userProfile.experience || [],
+    experience: userProfile.experience.map(exp => ({
+      ...exp,
+      description: Array.isArray(exp.description) 
+        ? exp.description 
+        : splitBulletPoints(exp.description as string)
+    })) || [],
     education: userProfile.education || [],
     skills: userProfile.skills || [],
     projects: userProfile.projects || []
@@ -95,7 +150,14 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
     setResume(prev => ({
       ...prev,
       experience: prev.experience.map((exp, i) => 
-        i === index ? { ...exp, [field]: field === 'description' ? (Array.isArray(value) ? value : value.split('\n')) : value } : exp
+        i === index 
+          ? { 
+              ...exp, 
+              [field]: field === 'description' 
+                ? (typeof value === 'string' ? splitBulletPoints(value) : value)
+                : value 
+            } 
+          : exp
       )
     }));
   };
@@ -170,9 +232,13 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
           {resume.experience.map((exp, index) => (
             <div key={index} className="mb-4">
               <h3 className="text-lg font-semibold">{exp.position}</h3>
-              <p className="text-gray-700 mb-2">{exp.company}</p>
+              <p className="text-gray-700 mb-1">{exp.company}</p>
               <p className="text-gray-600 mb-2">{`${exp.startDate} - ${exp.endDate}`}</p>
-              <p className="text-gray-700">{exp.description}</p>
+              <ul className="list-disc pl-5">
+                {exp.description.map((item, i) => (
+                  <li key={i} className="mb-1">{item}</li>
+                ))}
+              </ul>
             </div>
           ))}
         </section>
@@ -276,8 +342,8 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
               />
             </div>
             <Textarea
-              value={Array.isArray(exp.description) ? exp.description.join('\n') : exp.description}
-              onChange={(e) => handleExperienceChange(index, 'description', e.target.value.split('\n'))}
+              value={exp.description.map(item => `• ${item}`).join('\n')}
+              onChange={(e) => handleExperienceChange(index, 'description', e.target.value)}
               placeholder="Description (one bullet point per line)"
               rows={5}
             />
@@ -352,9 +418,7 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
         <div className="mt-4 bg-gray-100 p-4 rounded-lg">
           <h3 className="text-lg font-semibold mb-2">Suggestions:</h3>
           <ul className="list-disc pl-5">
-            {suggestions.map((suggestion, index) => (
-              <li key={index} className="text-gray-700">{suggestion}</li>
-            ))}
+            {/* Your list items go here */}
           </ul>
         </div>
       </div>
