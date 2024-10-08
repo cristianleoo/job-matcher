@@ -271,6 +271,17 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
     }));
   };
 
+  const deleteField = (field: string) => {
+    setResume(prev => ({ ...prev, [field]: field === 'skills' ? [] : '' }));
+  };
+
+  const deleteSkill = (index: number) => {
+    setResume(prev => ({
+      ...prev,
+      skills: prev.skills.filter((_, i) => i !== index)
+    }));
+  };
+
   return (
     <div className="flex space-x-4">
       {/* Resume Preview */}
@@ -369,22 +380,61 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
           onChange={(e) => handleInputChange('location', e.target.value)}
           placeholder="Location"
         />
-        <Input
-          value={resume.linkedin}
-          onChange={(e) => handleInputChange('linkedin', e.target.value)}
-          placeholder="LinkedIn URL"
-        />
-        <Input
-          value={resume.portfolio}
-          onChange={(e) => handleInputChange('portfolio', e.target.value)}
-          placeholder="Portfolio URL"
-        />
-        <Textarea
-          value={resume.summary}
-          onChange={(e) => handleInputChange('summary', e.target.value)}
-          placeholder="Professional Summary"
-          rows={4}
-        />
+        <div className="flex items-center space-x-2">
+          <Input
+            value={resume.linkedin}
+            onChange={(e) => handleInputChange('linkedin', e.target.value)}
+            placeholder="LinkedIn URL"
+          />
+          <Button onClick={() => deleteField('linkedin')} className="bg-red-500 hover:bg-red-600 text-white">
+            <FaTrash />
+          </Button>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Input
+            value={resume.portfolio}
+            onChange={(e) => handleInputChange('portfolio', e.target.value)}
+            placeholder="Portfolio URL"
+          />
+          <Button onClick={() => deleteField('portfolio')} className="bg-red-500 hover:bg-red-600 text-white">
+            <FaTrash />
+          </Button>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Textarea
+            value={resume.summary}
+            onChange={(e) => handleInputChange('summary', e.target.value)}
+            placeholder="Professional Summary"
+            rows={4}
+          />
+          <Button onClick={() => deleteField('summary')} className="bg-red-500 hover:bg-red-600 text-white">
+            <FaTrash />
+          </Button>
+        </div>
+
+        <h3 className="text-xl font-semibold">Skills</h3>
+        <div className="space-y-2">
+          {resume.skills.map((skill, index) => (
+            <div key={index} className="flex items-center space-x-2">
+              <Input
+                value={skill}
+                onChange={(e) => {
+                  const newSkills = [...resume.skills];
+                  newSkills[index] = e.target.value;
+                  handleInputChange('skills', newSkills);
+                }}
+              />
+              <Button onClick={() => deleteSkill(index)} className="bg-red-500 hover:bg-red-600 text-white">
+                <FaTrash />
+              </Button>
+            </div>
+          ))}
+          <Button onClick={() => handleInputChange('skills', [...resume.skills, ''])} className="bg-green-500 hover:bg-green-600 text-white">
+            Add Skill
+          </Button>
+        </div>
 
         <h3 className="text-xl font-semibold">Experience</h3>
         {resume.experience.map((exp, index) => (
@@ -447,14 +497,6 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
           </div>
         ))}
 
-        <h3 className="text-xl font-semibold">Skills</h3>
-        <Textarea
-          value={resume.skills.join(', ')}
-          onChange={(e) => handleInputChange('skills', e.target.value.split(',').map(skill => skill.trim()))}
-          placeholder="Skills (comma-separated)"
-          rows={3}
-        />
-
         <h3 className="text-xl font-semibold">Projects</h3>
         {resume.projects.map((project, index) => (
           <div key={index} className="space-y-2 border p-4 rounded">
@@ -479,6 +521,12 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
             </Button>
           </div>
         ))}
+        <Button 
+          onClick={() => setResume(prev => ({ ...prev, projects: [...prev.projects, { name: '', description: [], technologies: [] }] }))} 
+          className="bg-green-500 hover:bg-green-600 text-white"
+        >
+          Add Project
+        </Button>
 
         <div className="flex space-x-4 justify-center mt-6">
           <Button onClick={handleSave} className="bg-blue-500 hover:bg-blue-600 text-white">Save Resume</Button>
