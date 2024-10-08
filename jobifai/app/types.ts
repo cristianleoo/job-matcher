@@ -18,3 +18,18 @@ export interface Project {
   description: string[];
   technologies: string[];
 }
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  bio?: string;
+  location?: string;
+  phoneNumber?: string;
+  profilePicture?: string;
+  skills?: string[];
+  experiences: Experience[];
+  education: Education[];
+  projects: Project[];
+  // Add any other relevant fields for your application
+}

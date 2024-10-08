@@ -6,7 +6,7 @@ import { FaEnvelope, FaPhone, FaMapMarkerAlt, FaLinkedin, FaGlobe, FaTrash } fro
 import { createClient } from '@supabase/supabase-js';
 import { useUser } from '@clerk/nextjs';
 import { useUserStore } from '@/lib/userStore';
-import { Experience, Education, Project } from '@/app/types';
+import { Experience, Education, Project, UserProfile } from '@/app/types';
 import axios from 'axios';
 import { calculateSimilarity } from '@/lib/utils';
 
@@ -14,10 +14,11 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
 
 interface ResumeEditorProps {
   jobDescription: string;
-  onSave: (updatedResume: string) => void;
+  userProfile: UserProfile; // Add this line
+  onSave: (updatedResume: string) => Promise<void>;
 }
 
-export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
+export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEditorProps) {
   const { user } = useUser();
   const supabaseUserId = useUserStore((state) => state.supabaseUserId);
   const [resume, setResume] = useState({
@@ -341,12 +342,12 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
       if (section === 'summary') {
         setResume(prev => ({ ...prev, summary: generatedContent }));
       } else if (section === 'skills') {
-        setResume(prev => ({ ...prev, skills: generatedContent.split(', ').map(skill => skill.trim()) }));
+        setResume(prev => ({ ...prev, skills: generatedContent.split(', ').map((skill: string) => skill.trim()) }));
       } else if (section === 'experience') {
         setResume(prev => ({
           ...prev,
           experience: prev.experience.map((exp, index) => 
-            index === 0 ? { ...exp, description: generatedContent.split('\n').map(item => item.trim()) } : exp
+            index === 0 ? { ...exp, description: generatedContent.split('\n').map((item: string) => item.trim()) } : exp
           )
         }));
       }
