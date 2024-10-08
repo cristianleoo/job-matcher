@@ -8,6 +8,7 @@ import { useUser } from '@clerk/nextjs';
 import { useUserStore } from '@/lib/userStore';
 import { Experience, Education, Project } from '../types';
 import { Project } from '../types/project'; // Adjust the import path as needed
+import axios from 'axios';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
@@ -312,28 +313,41 @@ export function ResumeEditor({ jobDescription, onSave }: ResumeEditorProps) {
   };
 
   const regenerateSection = async (section: 'summary' | 'skills' | 'experience') => {
-    // Placeholder function for content regeneration
-    // In a real implementation, this would call an AI service to generate content
-    console.log(`Regenerating ${section}`);
-    // For now, let's just add a placeholder item
-    if (section === 'summary') {
-      setResume(prev => ({ ...prev, summary: 'Regenerated summary placeholder' }));
-    } else if (section === 'skills') {
-      setResume(prev => ({ ...prev, skills: [...prev.skills, 'New Skill'] }));
-    } else if (section === 'experience') {
-      setResume(prev => ({
-        ...prev,
-        experience: [
-          ...prev.experience,
-          {
-            company: 'New Company',
-            position: 'New Position',
-            startDate: 'Start Date',
-            endDate: 'End Date',
-            description: ['New job description']
-          }
-        ]
-      }));
+    try {
+      let prompt = '';
+      let currentContent = '';
+
+      if (section === 'summary') {
+        prompt = `Rewrite the following professional summary: "${resume.summary}"`;
+        currentContent = resume.summary;
+      } else if (section === 'skills') {
+        prompt = `Rewrite and potentially improve the following list of skills: ${resume.skills.join(', ')}`;
+        currentContent = resume.skills.join(', ');
+      } else if (section === 'experience') {
+        // For experience, we'll regenerate the most recent job description
+        const mostRecentJob = resume.experience[0];
+        prompt = `Rewrite and improve the following job description for the position of ${mostRecentJob.position} at ${mostRecentJob.company}: ${mostRecentJob.description.join(' ')}`;
+        currentContent = mostRecentJob.description.join(' ');
+      }
+
+      const response = await axios.post('/api/generate-content', { prompt, currentContent });
+      const generatedContent = response.data.generatedContent;
+
+      if (section === 'summary') {
+        setResume(prev => ({ ...prev, summary: generatedContent }));
+      } else if (section === 'skills') {
+        setResume(prev => ({ ...prev, skills: generatedContent.split(', ') }));
+      } else if (section === 'experience') {
+        setResume(prev => ({
+          ...prev,
+          experience: prev.experience.map((exp, index) => 
+            index === 0 ? { ...exp, description: generatedContent.split('. ') } : exp
+          )
+        }));
+      }
+    } catch (error) {
+      console.error('Error regenerating content:', error);
+      // Handle the error appropriately (e.g., show an error message to the user)
     }
   };
 
