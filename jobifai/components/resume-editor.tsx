@@ -113,12 +113,14 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
           endDate: exp.endDate,     // Changed from exp.end_date
           description: exp.description.join('\n').split('\n'),
         })),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         education: educationData.map((edu: any) => ({
           institution: edu.institution,
           degree: edu.degree,
           fieldOfStudy: edu.field_of_study,
           graduationDate: edu.graduation_date,
         })),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         skills: skillsData?.flatMap((item: any) => item.skills?.name || []) || [],
         projects: [], // Add a projects table if needed
       });

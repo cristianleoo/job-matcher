@@ -52,6 +52,7 @@ export async function GET(request: Request) {
         .select('skills:skill_id(name)')
         .eq('user_id', supabaseUserId);
       if (error) throw error;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       skills = data?.flatMap(skill => skill.skills?.map((s: any) => s.name) || []) || [];
     } catch (error) {
       console.error('Error fetching skills:', error);
