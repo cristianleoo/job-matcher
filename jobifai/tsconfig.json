@@ -29,7 +29,11 @@
     "types": [
       "react-pdf"
     ],
-    "baseUrl": "."
+    "baseUrl": ".",
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/@types" // Add this line
+    ]
   },
   "include": [
     "next-env.d.ts",
