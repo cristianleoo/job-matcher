@@ -106,12 +106,13 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
         linkedin: userData.linkedin_profile || '',
         portfolio: userData.personal_website || '',
         summary: '', // Add a summary field to the users table if needed
-        experience: workExpData.map((exp: Experience) => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        experience: workExpData.map((exp: any) => ({
           company: exp.company,
           position: exp.position,
-          startDate: exp.startDate, // Changed from exp.start_date
-          endDate: exp.endDate,     // Changed from exp.end_date
-          description: exp.description.join('\n').split('\n'),
+          startDate: exp.start_date,
+          endDate: exp.end_date,
+          description: exp.description.split('\n'),
         })),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         education: educationData.map((edu: any) => ({
