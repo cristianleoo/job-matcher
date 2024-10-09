@@ -53,9 +53,10 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState("");
-  const [isUserDataLoaded, setIsUserDataLoaded] = useState(false);
+  const [isUserDataLoaded, setIsUserDataLoaded] = useState<boolean>(false);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
-  const [userData, setUserData] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [userData, setUserData] = useState<Record<string, any> | null>(null);
   const [resumeContent, setResumeContent] = useState<string>('');
   const [extractedText, setExtractedText] = useState<string>('');
   const router = useRouter();
@@ -368,17 +369,19 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
                 <div className="flex-grow overflow-hidden">
                   <ReactMarkdown
                     components={{
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       code({node, inline, className, children, ...props}: any) {
                         const match = /language-(\w+)/.exec(className || '')
                         return !inline && match ? (
                           <SyntaxHighlighter
                             {...props}
-                            children={String(children).replace(/\n$/, '')}
                             style={tomorrow}
                             language={match[1]}
                             PreTag="div"
                             className="max-w-full overflow-x-auto"
-                          />
+                          >
+                            {String(children).replace(/\n$/, '')}
+                          </SyntaxHighlighter>
                         ) : (
                           <code {...props} className={className}>
                             {children}
@@ -401,16 +404,18 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
                 <div className="flex-grow">
                   <ReactMarkdown
                     components={{
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       code({node, inline, className, children, ...props}: any) {
                         const match = /language-(\w+)/.exec(className || '')
                         return !inline && match ? (
                           <SyntaxHighlighter
                             {...props}
-                            children={String(children).replace(/\n$/, '')}
                             style={tomorrow}
                             language={match[1]}
                             PreTag="div"
-                          />
+                          >
+                            {String(children).replace(/\n$/, '')}
+                          </SyntaxHighlighter>
                         ) : (
                           <code {...props} className={className}>
                             {children}
