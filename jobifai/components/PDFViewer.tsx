@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
+import { PDFPageProxy, TextContent, TextItem } from 'pdfjs-dist/types/src/display/api'; // Add this import
 
 // Worker for PDF.js
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -17,10 +18,13 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ pdfUrl, onTextExtracted }) => {
     setNumPages(numPages);
   }
 
-  function onPageLoadSuccess(page: any) {
+  function onPageLoadSuccess(page: PDFPageProxy) { // Specify the correct type for page
     const textContent = page.getTextContent();
-    textContent.then((text: any) => {
-      const pageText = text.items.map((item: any) => item.str).join(' ');
+    textContent.then((text: TextContent) => { // Specify the correct type for text
+      const pageText = text.items
+        .filter((item): item is TextItem => 'str' in item) // Type guard to filter items
+        .map((item) => item.str) // Now item is guaranteed to be TextItem
+        .join(' '); // Specify the type for item
       onTextExtracted(pageText);
     });
   }
