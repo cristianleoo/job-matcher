@@ -1,13 +1,18 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
+import { NextRequest, NextResponse } from "next/server";
 
-const isProtectedRoute = createRouteMatcher(["/"]);
+// Protect all routes except for those that are explicitly allowed
+const isProtectedRoute = (req: NextRequest) => {
+    const publicRoutes = ['/api/auth', '/_next', '/favicon.ico']; // Add any public routes here
+    return !publicRoutes.some(route => req.nextUrl.pathname.startsWith(route));
+};
 
 export default clerkMiddleware(async (auth, req) => {
     const { userId, getToken, redirectToSignIn } = auth();
 
+    // Check if the user is not authenticated and is trying to access a protected route
     if (!userId && isProtectedRoute(req)) {
-        return redirectToSignIn({ returnBackUrl: "/" });
+        return redirectToSignIn({ returnBackUrl: req.nextUrl.pathname });
     }
 
     if (userId && isProtectedRoute(req)) {
@@ -23,14 +28,11 @@ export default clerkMiddleware(async (auth, req) => {
 
             if (!response.ok) {
                 console.error('Error from /api/auth:', await response.text());
-                // You might want to handle this error case differently
                 return NextResponse.next();
             }
 
             const data = await response.json();
             console.log('User data:', data);
-
-            // You can do something with the user data here if needed
 
         } catch (error) {
             console.error('Error calling /api/auth:', error);
