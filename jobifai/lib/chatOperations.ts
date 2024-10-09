@@ -99,7 +99,15 @@ export async function getAllChatHistories(userId: string): Promise<ChatHistory[]
     return null;
   }
 
-  return data;
+  const formattedData: ChatHistory[] = data.map(item => ({
+    id: String(item.id), // {{ edit_1 }} Ensure id is a string
+    user_id: String(userId), // {{ edit_2 }} Ensure user_id is a string
+    title: String(item.title), // {{ edit_3 }} Ensure title is a string
+    timestamp: String(item.timestamp), // {{ edit_4 }} Ensure timestamp is a string
+    bucket_path: String(item.bucket_path) // {{ edit_5 }} Ensure bucket_path is a string
+  }));
+
+  return formattedData;
 }
 
 export async function deleteChatHistory(userId: string, chatId: string): Promise<boolean> {

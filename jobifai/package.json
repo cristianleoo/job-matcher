@@ -59,6 +59,7 @@
     "zustand": "^5.0.0-rc.2"
   },
   "devDependencies": {
+    "@types/json-schema": "^7.0.15",
     "@types/node": "^20",
     "@types/node-fetch": "^2.6.11",
     "@types/pdf-parse": "^1.1.4",

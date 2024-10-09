@@ -9,6 +9,7 @@ import React from "react";
 
 export function FloatingChatButton() {
   const [isOpen, setIsOpen] = useState(false);
+  const chatId = "your-chat-id"; // Ensure chatId is defined in your component
 
   return (
     <>
@@ -28,7 +29,7 @@ export function FloatingChatButton() {
             </Link>
           </div>
           <div className="flex-grow overflow-hidden">
-            <AIAssistant />
+            <AIAssistant chatId={chatId} />
           </div>
         </div>
       )}
