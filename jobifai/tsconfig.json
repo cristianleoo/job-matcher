@@ -26,9 +26,7 @@
         "./*"
       ]
     },
-    "types": [
-      "react-pdf"
-    ],
+    "types": [],
     "baseUrl": ".",
     "typeRoots": [
       "./node_modules/@types",
