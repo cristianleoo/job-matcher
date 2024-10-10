@@ -271,6 +271,47 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
     }
   };
 
+  const handleStatusChange = async (jobId: string, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/jobs`, { // Ensure the correct endpoint is used
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jobId: jobId, // Ensure this is correctly named
+          jobStatus: newStatus,
+          supabaseUserId: supabaseUserId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update job status');
+      }
+
+      // Refresh the application list after successful update
+      fetchApplications();
+    } catch (error) {
+      console.error('Error updating job status:', error);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Applied':
+        return 'bg-blue-500 text-white';
+      case 'Interview':
+        return 'bg-yellow-500 text-white';
+      case 'Offer':
+        return 'bg-green-500 text-white';
+      case 'Rejected':
+        return 'bg-red-500 text-white';
+      default:
+        return '';
+    }
+  };
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-4">Add New Job Application</h2>
@@ -356,7 +397,18 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{app.employment_type}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{app.experience_level}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{app.remote_type}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{app.status}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <select
+                    value={app.status}
+                    onChange={(e) => handleStatusChange(app.id, e.target.value)}
+                    className={`p-1 rounded ${getStatusColor(app.status)}`}
+                  >
+                    <option value="Applied">Applied</option>
+                    <option value="Interview">Interview</option>
+                    <option value="Offer">Offer</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {new Date(app.applied_date).toLocaleDateString()}
                 </td>
