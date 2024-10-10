@@ -111,7 +111,7 @@ export async function PATCH(request: Request) {
   const { jobId, jobStatus, supabaseUserId } = await request.json();
 
   // Log the incoming request data
-  // console.log('Incoming PATCH request data:', { jobId, jobStatus, supabaseUserId });
+  console.log('Incoming PATCH request data:', { jobId, jobStatus, supabaseUserId });
 
   // Validate required fields
   if (!jobId || !jobStatus || !supabaseUserId) {

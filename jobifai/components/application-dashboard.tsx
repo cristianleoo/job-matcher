@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
+import { useUserStore } from '@/lib/userStore'; // Import useUserStore to access supabaseUserId
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 
@@ -13,12 +14,18 @@ interface JobApplication {
 
 export function ApplicationDashboard() {
   const { userId } = useAuth();
+  const supabaseUserId = useUserStore((state) => state.supabaseUserId); // Get supabaseUserId from user store
   const [applications, setApplications] = useState<JobApplication[]>([]);
 
   useEffect(() => {
     const fetchApplications = async () => {
+      if (!supabaseUserId) {
+        console.error('No supabaseUserId found');
+        return; // Exit if supabaseUserId is not available
+      }
+
       try {
-        const response = await fetch(`/api/jobs?userId=${userId}`);
+        const response = await fetch(`/api/jobs?supabaseUserId=${supabaseUserId}`); // Use supabaseUserId here
         if (!response.ok) {
           throw new Error('Failed to fetch applications');
         }
@@ -29,10 +36,10 @@ export function ApplicationDashboard() {
       }
     };
 
-    if (userId) {
+    if (userId && supabaseUserId) { // Ensure both userId and supabaseUserId are valid
       fetchApplications();
     }
-  }, [userId]);
+  }, [userId, supabaseUserId]); // Add supabaseUserId to the dependency array
 
   const statusCounts = applications.reduce((acc, app) => {
     acc[app.status] = (acc[app.status] || 0) + 1;
