@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import { useUserStore } from '@/lib/userStore'; // Import useUserStore to access supabaseUserId
-import { Bar, Pie, Line } from 'react-chartjs-2'; // Import additional chart types
+import { useUserStore } from '@/lib/userStore';
+import { Bar, Pie, Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, LineElement, PointElement } from 'chart.js';
 
 // Register all necessary components
@@ -15,18 +15,18 @@ interface JobApplication {
 
 export function ApplicationDashboard() {
   const { userId } = useAuth();
-  const supabaseUserId = useUserStore((state) => state.supabaseUserId); // Get supabaseUserId from user store
+  const supabaseUserId = useUserStore((state) => state.supabaseUserId);
   const [applications, setApplications] = useState<JobApplication[]>([]);
 
   useEffect(() => {
     const fetchApplications = async () => {
       if (!supabaseUserId) {
         console.error('No supabaseUserId found');
-        return; // Exit if supabaseUserId is not available
+        return;
       }
 
       try {
-        const response = await fetch(`/api/jobs?supabaseUserId=${supabaseUserId}`); // Use supabaseUserId here
+        const response = await fetch(`/api/jobs?supabaseUserId=${supabaseUserId}`);
         if (!response.ok) {
           throw new Error('Failed to fetch applications');
         }
@@ -37,10 +37,10 @@ export function ApplicationDashboard() {
       }
     };
 
-    if (userId && supabaseUserId) { // Ensure both userId and supabaseUserId are valid
+    if (userId && supabaseUserId) {
       fetchApplications();
     }
-  }, [userId, supabaseUserId]); // Add supabaseUserId to the dependency array
+  }, [userId, supabaseUserId]);
 
   const statusCounts = applications.reduce((acc, app) => {
     acc[app.status] = (acc[app.status] || 0) + 1;
@@ -94,6 +94,28 @@ export function ApplicationDashboard() {
     ],
   };
 
+  // Funnel chart data
+  const funnelData = {
+    labels: ['Applied', 'Interview', 'Offer', 'Rejected'],
+    datasets: [
+      {
+        label: 'Application Flow',
+        data: [
+          statusCounts['Applied'] || 0,
+          statusCounts['Interview'] || 0,
+          statusCounts['Offer'] || 0,
+          statusCounts['Rejected'] || 0,
+        ],
+        backgroundColor: [
+          'rgba(75, 192, 192, 0.6)',
+          'rgba(255, 206, 86, 0.6)',
+          'rgba(255, 99, 132, 0.6)',
+          'rgba(54, 162, 235, 0.6)',
+        ],
+      },
+    ],
+  };
+
   const options = {
     responsive: true,
     plugins: {
@@ -114,21 +136,27 @@ export function ApplicationDashboard() {
         <p>Total Applications: {applications.length}</p>
       </div>
 
-      {/* Bar Chart for Application Status Distribution */}
-      <div className="w-full h-64 mb-4">
-        <Bar options={options} data={chartData} />
-      </div>
+      {/* Responsive layout for charts */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Bar Chart for Application Status Distribution */}
+        <div className="w-full h-64">
+          <Bar options={options} data={chartData} />
+        </div>
 
-      {/* Pie Chart for Application Status Distribution */}
-      <h3 className="text-xl font-bold mb-2">Application Status Distribution (Pie Chart)</h3>
-      <div className="w-full h-64 mb-4">
-        <Pie data={pieChartData} />
-      </div>
+        {/* Pie Chart for Application Status Distribution */}
+        <div className="w-full h-64">
+          <Pie data={pieChartData} />
+        </div>
 
-      {/* Line Chart for Applications Over Time */}
-      <h3 className="text-xl font-bold mb-2">Applications Over Time (Line Chart)</h3>
-      <div className="w-full h-64">
-        <Line data={lineChartData} />
+        {/* Line Chart for Applications Over Time */}
+        <div className="w-full h-64">
+          <Line data={lineChartData} />
+        </div>
+
+        {/* Funnel Chart for Application Flow
+        <div className="w-full h-64">
+          <Bar options={{ ...options, plugins: { title: { display: true, text: 'Application Flow (Funnel Chart)' } } }} data={funnelData} />
+        </div> */}
       </div>
     </div>
   );
