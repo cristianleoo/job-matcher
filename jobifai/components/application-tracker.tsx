@@ -179,17 +179,17 @@ export function ApplicationTracker() {
 
 Please provide the following information in a JSON format:
 {
-  "job_title": "",
-  "company": "",
-  "location": "",
-  "employment_type": "",
-  "experience_level": "",
-  "remote_type": "",
-  "skills": [],
-  "responsibilities": [],
-  "requirements": [],
-  "job_url": "",
-  "description": ""
+  "title": "", # this is the job title
+  "company": "", # this is the company name
+  "location": "", # this is the location of the job
+  "employment_type": "", # this is the employment type of the job
+  "experience_level": "", # this is the experience level of the job
+  "remote_type": "", # this is the remote type of the job
+  "skills": [], # this is the skills required for the job
+  "responsibilities": [], # this is the responsibilities of the job
+  "requirements": [], # this is the requirements of the job
+  "job_url": "", # this is the URL of the job
+  "description": "" # this is the description of the job
 }
 
 Ensure all fields are filled, using "N/A" if the information is not available. For arrays, provide at least one item or ["N/A"] if no information is found.`,

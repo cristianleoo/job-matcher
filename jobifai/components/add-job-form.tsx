@@ -53,7 +53,24 @@ export function AddJobForm({ onJobAdded, extractedJobInfo }: AddJobFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate job_url if provided
+    if (jobData.job_url && !isValidUrl(jobData.job_url)) {
+      alert("Please enter a valid URL or leave it empty.");
+      return;
+    }
+
     onJobAdded(jobData);
+  };
+
+  // Function to validate URL
+  const isValidUrl = (urlString: string) => {
+    try {
+      new URL(urlString);
+      return true;
+    } catch (_) {
+      return false;  
+    }
   };
 
   return (
@@ -95,8 +112,8 @@ export function AddJobForm({ onJobAdded, extractedJobInfo }: AddJobFormProps) {
         <Textarea id="requirements" name="requirements" value={jobData.requirements.join('\n')} onChange={(e) => handleArrayInputChange(e, 'requirements')} rows={3} />
       </div>
       <div>
-        <label htmlFor="job_url" className="block text-sm font-medium text-gray-700">Job URL (optional)</label>
-        <Input type="url" id="job_url" name="job_url" value={jobData.job_url} onChange={handleInputChange} />
+        <label htmlFor="job_url" className="block text-sm font-medium text-gray-700">Job URL</label>
+        <Input type="text" id="job_url" name="job_url" value={jobData.job_url} onChange={handleInputChange} autoComplete="off" />
       </div>
       <div>
         <label htmlFor="description" className="block text-sm font-medium text-gray-700">Job Description</label>
