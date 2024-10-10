@@ -8,13 +8,14 @@ type ChatHistory = {
   title: string;
   timestamp: string;
   bucket_path: string;
+  user_id: string; // Ensure user_id is included in the type
 };
 
 interface ChatSidebarProps {
   chats: ChatHistory[];
   activeChat: string | null;
   onSelectChat: (chatId: string) => void;
-  onNewChat: () => void;
+  onNewChat: (newChat: ChatHistory & { user_id: string }) => void; // Update to accept user_id
   onDeleteChat: (chatId: string) => void;
 }
 
@@ -51,7 +52,7 @@ export function ChatSidebar({ chats, activeChat, onSelectChat, onNewChat, onDele
           {isOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />} {/* Toggle icon */}
         </Button>
         {isOpen && ( // Only show the new chat button when the sidebar is open
-          <Button onClick={onNewChat} className="w-full mb-4">
+          <Button onClick={() => onNewChat({ id: '', title: '', timestamp: new Date().toISOString(), bucket_path: 'chat_page', user_id: '' })} className="w-full mb-4">
             <PlusCircle className="mr-2 h-4 w-4" /> New Chat
           </Button>
         )}

@@ -32,6 +32,7 @@ interface Chat {
   messages: { role: string; content: string }[];
   timestamp?: string;
   bucket_path?: string;
+  user_id?: string; // Add this line to include user_id
 }
 
 type Message = {
@@ -316,6 +317,7 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
         chats={chats.map(chat => ({
           ...chat,
           timestamp: chat.timestamp || new Date().toISOString(),
+          user_id: chat.user_id || 'default_user_id', // Add this line
           bucket_path: chat.bucket_path || ''
         }))}
         activeChat={activeChat}
