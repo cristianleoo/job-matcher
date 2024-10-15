@@ -14,3 +14,6 @@ In order to get relevant information for the to do list and questions, the model
 
 # Payment
 The app will have a freemium model. The applications tracker will be free to use. The chat will have a limit of 50 requests a month. And the options to generate the resume won't be available. The payment systme will be Stripe. And the plan would be 9.90$/week, 19.90$/month, 179.90$/year.
+
+# Resume Builder
+I want to create a new page with a functionality that will let me build a resume. This will be particularly useful for users who don't have a resume or they want to build one from scratch. First, it shoulld ask if the user wants to upload a pdf of the resume, linkedin profile or portfolio, or anything that will help gathering information from the user. Then the model would prompt some questions one at a time, it should look like a survey rather than a chat, to get to know the user better, and then it will start generating the resume. Once everything is ready and it's generating the resume a loader should pop up on the screen. Then the resume will be rendered on the screen it will be similar to @resume-editor.tsx , and @PDFViewer.tsx 

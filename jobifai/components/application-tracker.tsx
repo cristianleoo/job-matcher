@@ -8,6 +8,7 @@ import { AddJobForm } from './add-job-form';
 import React from 'react';
 import { FaLock } from 'react-icons/fa'; // Import the lock icon
 import { ResumeEditor } from './resume-editor';
+import InterviewPreparationPlan from './InterviewPreparationPlan'; // Import the new component
 
 interface JobApplication {
   id: string;
@@ -70,6 +71,8 @@ export function ApplicationTracker() {
   const [showResumeEditor, setShowResumeEditor] = useState(false);
   const [selectedJob, setSelectedJob] = useState<JobApplication | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [showInterviewPlan, setShowInterviewPlan] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
   const fetchApplications = useCallback(async () => {
     if (!supabaseUserId) return;
@@ -312,6 +315,11 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
     }
   };
 
+  const handlePrepareInterview = (job: JobApplication) => {
+    setSelectedJobId(job.id);
+    setShowInterviewPlan(true);
+  };
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-4">Add New Job Application</h2>
@@ -385,6 +393,7 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remote</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applied Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interview Prep</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
@@ -411,6 +420,16 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {new Date(app.applied_date).toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handlePrepareInterview(app)}
+                      className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded"
+                    >
+                      Prepare Interview
+                    </button>
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex space-x-2">
@@ -463,6 +482,10 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
             </button>
           </div>
         </div>
+      )}
+
+      {showInterviewPlan && selectedJobId && (
+        <InterviewPreparationPlan jobId={selectedJobId} onClose={() => setShowInterviewPlan(false)} />
       )}
     </div>
   );

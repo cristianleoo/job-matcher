@@ -27,8 +27,8 @@ export function UserProfileForm() {
     phone: '',
     location: '',
     bio: '',
-    skills: [''],
-    workExperience: [{ company: '', position: '', startDate: '', endDate: '', description: '' }],
+    skills: [''], // Ensure there's at least one entry
+    workExperience: [{ company: '', position: '', startDate: '', endDate: '', description: '' }], // Ensure there's at least one entry
     education: [{ institution: '', degree: '', fieldOfStudy: '', graduationDate: '' }],
     portfolioLinks: [''],
     jobPreferences: {
