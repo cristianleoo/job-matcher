@@ -8,7 +8,6 @@ import { AddJobForm } from './add-job-form';
 import React from 'react';
 import { FaLock } from 'react-icons/fa'; // Import the lock icon
 import { ResumeEditor } from './resume-editor';
-import InterviewPreparationPlan from './InterviewPreparationPlan'; // Import the new component
 
 interface JobApplication {
   id: string;
@@ -484,9 +483,9 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
         </div>
       )}
 
-      {showInterviewPlan && selectedJobId && (
+      {/* {showInterviewPlan && selectedJobId && (
         <InterviewPreparationPlan jobId={selectedJobId} onClose={() => setShowInterviewPlan(false)} />
-      )}
+      )} */}
     </div>
   );
 }
