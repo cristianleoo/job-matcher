@@ -9,7 +9,7 @@ import React from 'react';
 import { FaLock } from 'react-icons/fa'; // Import the lock icon
 import { ResumeEditor } from './resume-editor';
 import { motion } from 'framer-motion';
-import { EyeIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, PencilSquareIcon, TrashIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
 
 interface JobApplication {
   id: string;
@@ -406,32 +406,31 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
       )}
 
       <h2 className="text-2xl font-bold mb-4 mt-8">Your Applications</h2>
-      <div className="overflow-x-auto shadow-md sm:rounded-lg">
+      <div className="overflow-x-auto">
         <table className="w-full text-sm text-left text-gray-500">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+          <thead className="text-sm text-gray-700 uppercase bg-gray-50">
             <tr>
-              <th scope="col" className="px-6 py-3">Title</th>
-              <th scope="col" className="px-6 py-3 text-center">Company</th>
-              <th scope="col" className="px-6 py-3 text-center">Location</th>
-              <th scope="col" className="px-6 py-3 text-center">Type</th>
-              <th scope="col" className="px-6 py-3 text-center">Experience</th>
-              <th scope="col" className="px-6 py-3 text-center">Remote</th>
-              <th scope="col" className="px-6 py-3 text-center">Status</th>
-              <th scope="col" className="px-6 py-3 text-center">Applied Date</th>
-              <th scope="col" className="px-6 py-3 text-center">Interview Prep</th>
-              <th scope="col" className="px-6 py-3 text-center">Actions</th>
+              <th scope="col" className="px-3 py-3">Title</th>
+              <th scope="col" className="px-3 py-3 text-center">Company</th>
+              <th scope="col" className="px-3 py-3 text-center">Location</th>
+              <th scope="col" className="px-3 py-3 text-center">Type</th>
+              <th scope="col" className="px-3 py-3 text-center">Experience</th>
+              <th scope="col" className="px-3 py-3 text-center">Remote</th>
+              <th scope="col" className="px-3 py-3 text-center">Status</th>
+              <th scope="col" className="px-3 py-3 text-center">Applied Date</th>
+              <th scope="col" className="px-3 py-3 text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
             {applications.map((app, index) => (
               <tr key={app.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{app.title}</td>
-                <td className="px-6 py-4 text-center">{app.company}</td>
-                <td className="px-6 py-4 text-center">{app.location}</td>
-                <td className="px-6 py-4 text-center">{app.employment_type}</td>
-                <td className="px-6 py-4 text-center">{app.experience_level}</td>
-                <td className="px-6 py-4 text-center">{app.remote_type}</td>
-                <td className="px-6 py-4 text-center">
+                <td className="px-3 py-4 font-medium text-gray-900 whitespace-nowrap">{app.title}</td>
+                <td className="px-3 py-4 text-center">{app.company}</td>
+                <td className="px-3 py-4 text-center">{app.location}</td>
+                <td className="px-3 py-4 text-center">{app.employment_type}</td>
+                <td className="px-3 py-4 text-center">{app.experience_level}</td>
+                <td className="px-3 py-4 text-center">{app.remote_type}</td>
+                <td className="px-3 py-4 text-center">
                   <select
                     value={app.status}
                     onChange={(e) => handleStatusChange(app.id, e.target.value)}
@@ -444,31 +443,32 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
                     <option value="Rejected">Rejected</option>
                   </select>
                 </td>
-                <td className="px-6 py-4 text-center">{new Date(app.applied_date).toLocaleDateString()}</td>
-                <td className="px-6 py-4 text-center">
-                  <button
-                    onClick={() => handlePrepareInterview(app)}
-                    className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-full transition duration-300 ease-in-out transform hover:scale-105"
-                  >
-                    Prepare Interview
-                  </button>
-                </td>
-                <td className="px-6 py-4 text-center">
-                  <div className="flex justify-center space-x-4">
+                <td className="px-3 py-4 text-center">{new Date(app.applied_date).toLocaleDateString()}</td>
+                <td className="px-3 py-4 text-center">
+                  <div className="flex justify-center space-x-3">
                     <Link href={`/jobs/${app.id}`}>
-                      <button className="text-blue-600 hover:text-blue-800">
+                      <button className="text-blue-600 hover:text-blue-800" title="View Details">
                         <EyeIcon className="w-5 h-5" />
                       </button>
                     </Link>
                     <button
                       onClick={() => handleEditResume(app)}
                       className="text-green-600 hover:text-green-800"
+                      title="Edit Resume"
                     >
                       <PencilSquareIcon className="w-5 h-5" />
                     </button>
                     <button
+                      onClick={() => handlePrepareInterview(app)}
+                      className="text-yellow-600 hover:text-yellow-800"
+                      title="Prepare Interview"
+                    >
+                      <AcademicCapIcon className="w-5 h-5" />
+                    </button>
+                    <button
                       onClick={() => handleDelete(app.id)}
                       className="text-red-600 hover:text-red-800"
+                      title="Delete Application"
                     >
                       <TrashIcon className="w-5 h-5" />
                     </button>
