@@ -9,6 +9,7 @@ import React from 'react';
 import { FaLock } from 'react-icons/fa'; // Import the lock icon
 import { ResumeEditor } from './resume-editor';
 import { motion } from 'framer-motion';
+import { EyeIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 interface JobApplication {
   id: string;
@@ -405,36 +406,36 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
       )}
 
       <h2 className="text-2xl font-bold mb-4 mt-8">Your Applications</h2>
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white">
-          <thead className="bg-gray-100">
+      <div className="overflow-x-auto shadow-md sm:rounded-lg">
+        <table className="w-full text-sm text-left text-gray-500">
+          <thead className="text-xs text-gray-700 uppercase bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Experience</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remote</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applied Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interview Prep</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th scope="col" className="px-6 py-3">Title</th>
+              <th scope="col" className="px-6 py-3 text-center">Company</th>
+              <th scope="col" className="px-6 py-3 text-center">Location</th>
+              <th scope="col" className="px-6 py-3 text-center">Type</th>
+              <th scope="col" className="px-6 py-3 text-center">Experience</th>
+              <th scope="col" className="px-6 py-3 text-center">Remote</th>
+              <th scope="col" className="px-6 py-3 text-center">Status</th>
+              <th scope="col" className="px-6 py-3 text-center">Applied Date</th>
+              <th scope="col" className="px-6 py-3 text-center">Interview Prep</th>
+              <th scope="col" className="px-6 py-3 text-center">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {applications.map((app) => (
-              <tr key={app.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{app.title}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{app.company}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{app.location}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{app.employment_type}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{app.experience_level}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{app.remote_type}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+          <tbody>
+            {applications.map((app, index) => (
+              <tr key={app.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{app.title}</td>
+                <td className="px-6 py-4 text-center">{app.company}</td>
+                <td className="px-6 py-4 text-center">{app.location}</td>
+                <td className="px-6 py-4 text-center">{app.employment_type}</td>
+                <td className="px-6 py-4 text-center">{app.experience_level}</td>
+                <td className="px-6 py-4 text-center">{app.remote_type}</td>
+                <td className="px-6 py-4 text-center">
                   <select
                     value={app.status}
                     onChange={(e) => handleStatusChange(app.id, e.target.value)}
-                    className={`p-1 rounded ${getStatusColor(app.status)}`}
+                    className={`p-2 rounded-full text-sm font-semibold ${getStatusColor(app.status)}`}
                   >
                     <option value="Not Applied">Not Applied</option>
                     <option value="Applied">Applied</option>
@@ -443,37 +444,33 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
                     <option value="Rejected">Rejected</option>
                   </select>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Date(app.applied_date).toLocaleDateString()}
+                <td className="px-6 py-4 text-center">{new Date(app.applied_date).toLocaleDateString()}</td>
+                <td className="px-6 py-4 text-center">
+                  <button
+                    onClick={() => handlePrepareInterview(app)}
+                    className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-full transition duration-300 ease-in-out transform hover:scale-105"
+                  >
+                    Prepare Interview
+                  </button>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handlePrepareInterview(app)}
-                      className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded"
-                    >
-                      Prepare Interview
-                    </button>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex space-x-2">
+                <td className="px-6 py-4 text-center">
+                  <div className="flex justify-center space-x-4">
                     <Link href={`/jobs/${app.id}`}>
-                      <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded">
-                        View
+                      <button className="text-blue-600 hover:text-blue-800">
+                        <EyeIcon className="w-5 h-5" />
                       </button>
                     </Link>
                     <button
                       onClick={() => handleEditResume(app)}
-                      className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-3 rounded"
+                      className="text-green-600 hover:text-green-800"
                     >
-                      Edit Resume
+                      <PencilSquareIcon className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => handleDelete(app.id)}
-                      className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded"
+                      className="text-red-600 hover:text-red-800"
                     >
-                      Delete
+                      <TrashIcon className="w-5 h-5" />
                     </button>
                   </div>
                 </td>
