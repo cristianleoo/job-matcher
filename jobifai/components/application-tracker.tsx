@@ -301,6 +301,8 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'Considering':
+        return 'bg-purple-500 text-white';
       case 'Applied':
         return 'bg-blue-500 text-white';
       case 'Interview':
@@ -411,6 +413,7 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
                     onChange={(e) => handleStatusChange(app.id, e.target.value)}
                     className={`p-1 rounded ${getStatusColor(app.status)}`}
                   >
+                    <option value="Considering">Considering</option>
                     <option value="Applied">Applied</option>
                     <option value="Interview">Interview</option>
                     <option value="Offer">Offer</option>
