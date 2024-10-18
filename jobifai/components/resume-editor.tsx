@@ -507,6 +507,8 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
             onClose={() => setChatOpen(false)}
             onApply={handleApplyChanges}
             section={currentSection!}
+            supabaseUserId={supabaseUserId}
+            resumeContent={JSON.stringify(resume)}
           />
         </div>
       ) : (
