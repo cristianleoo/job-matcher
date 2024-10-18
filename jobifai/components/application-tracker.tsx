@@ -8,6 +8,7 @@ import { AddJobForm } from './add-job-form';
 import React from 'react';
 import { FaLock } from 'react-icons/fa'; // Import the lock icon
 import { ResumeEditor } from './resume-editor';
+import { motion } from 'framer-motion';
 
 interface JobApplication {
   id: string;
@@ -133,7 +134,7 @@ export function ApplicationTracker() {
 
   const handleJobAdded = async (jobData: JobApplication) => {
     try {
-      console.log('Job data to be sent:', jobData); // Add this line for debugging
+      console.log('Job data to be sent:', jobData);
 
       const response = await fetch('/api/jobs', {
         method: 'POST',
@@ -142,6 +143,7 @@ export function ApplicationTracker() {
         },
         body: JSON.stringify({
           ...jobData,
+          status: 'Not Applied', // Set default status to 'Not Applied'
           supabaseUserId,
         }),
       });
@@ -190,7 +192,7 @@ Please provide the following information in a JSON format:
   "skills": [], # this is the skills required for the job
   "responsibilities": [], # this is the responsibilities of the job
   "requirements": [], # this is the requirements of the job
-  "job_url": "", # this is the URL of the job
+  "job_url": "", # this is the URL of the job. If the job is not found, please return an empty string.
   "description": "" # this is the description of the job
 }
 
@@ -301,7 +303,7 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Considering':
+      case 'Not Applied':
         return 'bg-purple-500 text-white';
       case 'Applied':
         return 'bg-blue-500 text-white';
@@ -360,8 +362,24 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
       )}
 
       {isLoading && (
-        <div className="mt-4">
-          <p>Extracting job information...</p>
+        <div className="flex flex-col items-center justify-center mt-8">
+          <div className="relative w-24 h-24">
+            {[0, 1, 2].map((index) => (
+              <motion.span
+                key={index}
+                className="absolute top-0 left-0 w-full h-full border-4 border-blue-500 rounded-full"
+                style={{ borderTopColor: 'transparent' }}
+                animate={{ rotate: 360 }}
+                transition={{
+                  duration: 1,
+                  repeat: Infinity,
+                  ease: 'linear',
+                  delay: index * 0.2,
+                }}
+              />
+            ))}
+          </div>
+          <p className="mt-4 text-lg font-semibold text-blue-600">Extracting job information...</p>
         </div>
       )}
 
@@ -413,7 +431,7 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
                     onChange={(e) => handleStatusChange(app.id, e.target.value)}
                     className={`p-1 rounded ${getStatusColor(app.status)}`}
                   >
-                    <option value="Considering">Considering</option>
+                    <option value="Not Applied">Not Applied</option>
                     <option value="Applied">Applied</option>
                     <option value="Interview">Interview</option>
                     <option value="Offer">Offer</option>
