@@ -41,6 +41,7 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
   const [similarityScore, setSimilarityScore] = useState<number>(0);
   const [chatOpen, setChatOpen] = useState(false);
   const [currentSection, setCurrentSection] = useState<'summary' | 'skills' | 'experience' | 'education' | null>(null);
+  const [sectionContent, setSectionContent] = useState<string>('');
 
   useEffect(() => {
     if (user && supabaseUserId) {
@@ -377,14 +378,25 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
 
   const handleCustomRegenerate = (section: 'summary' | 'skills' | 'experience' | 'education') => {
     setCurrentSection(section);
+    let content = '';
+    if (section === 'experience' && resume.experience.length > 0) {
+      content = resume.experience[0].description.join('\n');
+    } else if (section === 'skills') {
+      content = resume.skills.join(', ');
+    } else if (section === 'summary') {
+      content = resume.summary || '';
+    } else if (section === 'education' && resume.education.length > 0) {
+      content = `${resume.education[0].degree} in ${resume.education[0].fieldOfStudy} from ${resume.education[0].institution}, graduated on ${resume.education[0].graduationDate}`;
+    }
+    setSectionContent(content);
     setChatOpen(true);
   };
 
   const handleApplyChanges = (content: string) => {
     if (currentSection === 'summary') {
-      setResume(prev => ({ ...prev, summary: content }));
+      setResume(prev => ({ ...prev, summary: content, sectionContent: content }));
     } else if (currentSection === 'skills') {
-      setResume(prev => ({ ...prev, skills: content.split(', ').map(skill => skill.trim()) }));
+      setResume(prev => ({ ...prev, skills: content.split(', ').map(skill => skill.trim()), sectionContent: content }));
     } else if (currentSection === 'experience') {
       setResume(prev => ({
         ...prev,
@@ -509,6 +521,7 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
             section={currentSection!}
             supabaseUserId={supabaseUserId}
             resumeContent={JSON.stringify(resume)}
+            sectionContent={sectionContent}
           />
         </div>
       ) : (

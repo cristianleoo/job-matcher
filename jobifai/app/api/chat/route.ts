@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { message, supabaseUserId, context, chatId, userData, resumeContent } = await req.json();
+    const { message, supabaseUserId, context, chatId, userData, resumeContent, section, sectionContent } = await req.json();
 
     if (!supabaseUserId) {
         console.log("Supabase user ID not found in request");
@@ -62,16 +62,35 @@ export async function POST(req: NextRequest) {
             history: history,
         });
 
-        // If it's a resume context, add the resume content to the message with clear instructions
-        const fullMessage = context === 'resume' && resumeContent
-            ? `You are an AI assistant helping a job seeker. The following text is the user's resume:
+        let fullMessage: string;
+
+        if (context === 'resume' && resumeContent) {
+            fullMessage = `You are an AI assistant helping a job seeker. The following text is the user's resume:
             Resume Content:
             ${resumeContent}
 
             Please keep this resume in mind when answering the following question from the user. Treat this resume as belonging to the person you're talking to.
 
-            User question: ${message}`
-            : message;
+            User question: ${message}`;
+        } else if (context === 'section' && section && sectionContent) {
+            fullMessage = `You are an AI assistant helping a job seeker. The following text is the user's resume:
+            Resume Content:
+            ${resumeContent}
+
+            Please keep this resume in mind when answering the following question from the user. Treat this resume as belonging to the person you're talking to.
+            Make sure to use the current content of the ${section} section of the resume.
+            This is the current content of the ${section} section:
+            ${sectionContent}
+
+            User question: ${message}`;
+        } else {
+            fullMessage = message;
+        }
+
+        console.log("Full message:", fullMessage);
+        console.log("Context:", context);
+        console.log("Section:", section);
+        console.log("Section content:", sectionContent);
 
         console.log("Sending message to AI:", fullMessage.substring(0, 200) + '...');
 
