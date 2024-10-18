@@ -1,31 +1,68 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { AIAssistant } from '@/components/ai-assistant';
-import { ChatHistory } from '@/lib/types';
+import { v4 as uuidv4 } from 'uuid';
+
+type ChatHistory = {
+  id: string;
+  title: string;
+  timestamp: string;
+  bucket_path: string;
+  user_id: string;
+};
 
 const ChatPage = () => {
-  const [chats, setChats] = useState<ChatHistory[]>([]); // Initialize chats state
+  const [chats, setChats] = useState<ChatHistory[]>([]);
+  const [activeChat, setActiveChat] = useState<string | null>(null);
 
-  // Function to add a new chat
-  const addNewChat = (newChat: ChatHistory & { user_id: string }) => {
-    setChats((prevChats) => [...prevChats, newChat]);
+  useEffect(() => {
+    // Create a default chat if none exists
+    if (chats.length === 0) {
+      const newChat = {
+        id: uuidv4(),
+        title: 'New Chat',
+        timestamp: new Date().toISOString(),
+        bucket_path: 'chat_page',
+        user_id: 'default_user' // Replace with actual user ID when available
+      };
+      setChats([newChat]);
+      setActiveChat(newChat.id);
+    }
+  }, []);
+
+  const addNewChat = (newChat: ChatHistory) => {
+    const chatWithId = { ...newChat, id: uuidv4() };
+    setChats((prevChats) => [...prevChats, chatWithId]);
+    setActiveChat(chatWithId.id);
   };
 
-  // Filter chats to only include those started in this chat page
-  const filteredChats = chats.filter(chat => chat.bucket_path === 'chat_page'); // Adjust the condition as needed
+  const handleDeleteChat = (chatId: string) => {
+    setChats((prevChats) => prevChats.filter(chat => chat.id !== chatId));
+    if (activeChat === chatId) {
+      setActiveChat(chats.length > 1 ? chats[0].id : null);
+    }
+  };
 
   return (
-    <div className="flex">
-      <ChatSidebar 
-        chats={filteredChats} 
-        activeChat={filteredChats.length > 0 ? filteredChats[0].id : null} 
-        onSelectChat={(chatId) => setChats((prevChats) => prevChats.map(chat => chat.id === chatId ? { ...chat, active: true } : { ...chat, active: false }))} 
-        onNewChat={(newChat: ChatHistory & { user_id: string }) => addNewChat(newChat)} // Ensure this matches the expected signature
-        onDeleteChat={(chatId) => setChats((prevChats) => prevChats.filter(chat => chat.id !== chatId))} 
-      />
-      <AIAssistant chatId={filteredChats.length > 0 ? filteredChats[0].id : null} />
+    <div className="flex h-screen">
+      {/* <ChatSidebar 
+        chats={chats}
+        activeChat={activeChat}
+        onSelectChat={setActiveChat}
+        onNewChat={addNewChat}
+        onDeleteChat={handleDeleteChat}
+      /> */}
+      <div className="flex-grow">
+        {activeChat ? (
+          <AIAssistant chatId={activeChat} />
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <p>Select a chat or start a new one</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
