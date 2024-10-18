@@ -317,7 +317,7 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
         chats={chats.map(chat => ({
           ...chat,
           timestamp: chat.timestamp || new Date().toISOString(),
-          user_id: chat.user_id || 'default_user_id', // Add this line
+          user_id: chat.user_id || 'default_user_id',
           bucket_path: chat.bucket_path || ''
         }))}
         activeChat={activeChat}
@@ -354,7 +354,7 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
         </div>
         <div className="flex-grow flex overflow-hidden">
           <div className={`flex-grow overflow-y-auto p-4 space-y-4 ${isUserDataLoaded ? 'max-w-[66%]' : 'w-full'}`}>
-            {chats.find(chat => chat.id === activeChat)?.messages?.map((message, index) => (
+            {activeChat && chats.find(chat => chat.id === activeChat)?.messages.map((message, index) => (
               <div
                 key={`${activeChat}-${index}`}
                 className={`p-2 rounded-lg flex items-start ${
