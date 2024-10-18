@@ -73,6 +73,7 @@ export function ApplicationTracker() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [showInterviewPlan, setShowInterviewPlan] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [showParsedContent, setShowParsedContent] = useState(true);
 
   const fetchApplications = useCallback(async () => {
     if (!supabaseUserId) return;
@@ -158,6 +159,10 @@ export function ApplicationTracker() {
 
       setShowSuccessMessage(true);
       fetchApplications();
+      setShowParsedContent(false); // Hide the parsed content area
+      setJobContent(''); // Clear the job content input
+      setExtractedJobInfo(null); // Clear the extracted job info
+      setShowJobForm(false); // Hide the job form
       setTimeout(() => setShowSuccessMessage(false), 3000);
     } catch (error) {
       console.error('Error adding job application:', error);
