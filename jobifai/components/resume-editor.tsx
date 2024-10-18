@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,12 +9,13 @@ import { useUserStore } from '@/lib/userStore';
 import { Experience, Education, Project, UserProfile } from '@/app/types';
 import axios from 'axios';
 import { calculateSimilarity } from '@/lib/utils';
+import { Label } from '@/components/ui/label';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
 interface ResumeEditorProps {
   jobDescription: string;
-  userProfile: UserProfile; // Add this line
+  userProfile: UserProfile;
   onSave: (updatedResume: string) => Promise<void>;
 }
 
@@ -44,10 +45,19 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
     }
   }, [user, supabaseUserId]);
 
+  const generateSuggestions = useCallback((jobDesc: string, profile: typeof resume): string[] => {
+    const keywords = extractKeywords(jobDesc);
+    return [
+      `Consider highlighting these skills: ${keywords.join(', ')}`,
+      'Tailor your experience descriptions to match job requirements',
+      'Add quantifiable achievements to stand out',
+    ];
+  }, []);
+
   useEffect(() => {
     const generatedSuggestions = generateSuggestions(jobDescription, resume);
     setSuggestions(generatedSuggestions);
-  }, [jobDescription, resume]);
+  }, [jobDescription, resume, generateSuggestions]);
 
   useEffect(() => {
     const score = calculateSimilarity(resume, jobDescription);
@@ -128,15 +138,6 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
     } catch (error) {
       console.error('Error fetching user profile:', error);
     }
-  };
-
-  const generateSuggestions = (jobDesc: string, profile: typeof resume): string[] => {
-    const keywords = extractKeywords(jobDesc);
-    return [
-      `Consider highlighting these skills: ${keywords.join(', ')}`,
-      'Tailor your experience descriptions to match job requirements',
-      'Add quantifiable achievements to stand out',
-    ];
   };
 
   const extractKeywords = (text: string): string[] => {
@@ -322,7 +323,7 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
     });
   };
 
-  const regenerateSection = async (section: 'summary' | 'skills' | 'experience') => {
+  const regenerateSection = async (section: 'summary' | 'skills' | 'experience' | 'education') => {
     try {
       let prompt = '';
       let currentContent = '';
@@ -337,6 +338,10 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
         const mostRecentJob = resume.experience[0];
         prompt = `Improve the following job description to better match the job posting. Only use information provided in the original description:`;
         currentContent = `Current Job Description for ${mostRecentJob.position} at ${mostRecentJob.company}:\n${mostRecentJob.description.join('\n')}\n\nJob Posting: ${jobDescription}`;
+      } else if (section === 'education') {
+        const mostRecentEducation = resume.education[0];
+        prompt = `Based on the following education details and job description, suggest improvements or additions to better align with the job requirements. Do not invent new information:`;
+        currentContent = `Current Education: ${mostRecentEducation.degree} in ${mostRecentEducation.fieldOfStudy} from ${mostRecentEducation.institution}, graduated on ${mostRecentEducation.graduationDate}\n\nJob Description: ${jobDescription}`;
       }
 
       const response = await axios.post('/api/generate-content', { prompt, currentContent, section, jobDescription });
@@ -351,6 +356,64 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
           ...prev,
           experience: prev.experience.map((exp, index) => 
             index === 0 ? { ...exp, description: generatedContent.split('\n').map((item: string) => item.trim()) } : exp
+          )
+        }));
+      } else if (section === 'education') {
+        setResume(prev => ({
+          ...prev,
+          education: prev.education.map((edu, index) => 
+            index === 0 ? { ...edu, fieldOfStudy: generatedContent } : edu
+          )
+        }));
+      }
+    } catch (error) {
+      console.error('Error regenerating content:', error);
+      // Handle the error appropriately (e.g., show an error message to the user)
+    }
+  };
+
+  const handleCustomRegenerate = async (section: 'summary' | 'skills' | 'experience' | 'education', customPrompt: string) => {
+    try {
+      let prompt = '';
+      let currentContent = '';
+
+      if (section === 'summary') {
+        prompt = `Based on the following resume content and job description, create a brief professional summary that highlights why the candidate is a good fit for the position. Do not invent new information. Make sure to include the following: ${customPrompt}`;
+        currentContent = `Resume: ${JSON.stringify(resume)}\n\nJob Description: ${jobDescription}`;
+      } else if (section === 'skills') {
+        prompt = `Based on the following resume skills and job description, provide a comma-separated list of the most relevant skills. Only include skills that are mentioned in the resume. Make sure to include the following: ${customPrompt}`;
+        currentContent = `Current Skills: ${resume.skills.join(', ')}\n\nJob Description: ${jobDescription}`;
+      } else if (section === 'experience') {
+        const mostRecentJob = resume.experience[0];
+        prompt = `Improve the following job description to better match the job posting. Only use information provided in the original description. Make sure to include the following: ${customPrompt}`;
+        currentContent = `Current Job Description for ${mostRecentJob.position} at ${mostRecentJob.company}:\n${mostRecentJob.description.join('\n')}\n\nJob Posting: ${jobDescription}`;
+      } else if (section === 'education') {
+        const mostRecentEducation = resume.education[0];
+        prompt = `Based on the following education details and job description, suggest improvements or additions to better align with the job requirements. Do not invent new information. Make sure to include the following: ${customPrompt}`;
+        currentContent = `Current Education: ${mostRecentEducation.degree} in ${mostRecentEducation.fieldOfStudy} from ${mostRecentEducation.institution}, graduated on ${mostRecentEducation.graduationDate}\n\nJob Description: ${jobDescription}`;
+      }
+
+      console.log('Prompt:', prompt);
+
+      const response = await axios.post('/api/generate-content', { prompt, currentContent, section, jobDescription });
+      const generatedContent = response.data.generatedContent;
+
+      if (section === 'summary') {
+        setResume(prev => ({ ...prev, summary: generatedContent }));
+      } else if (section === 'skills') {
+        setResume(prev => ({ ...prev, skills: generatedContent.split(', ').map((skill: string) => skill.trim()) }));
+      } else if (section === 'experience') {
+        setResume(prev => ({
+          ...prev,
+          experience: prev.experience.map((exp, index) => 
+            index === 0 ? { ...exp, description: generatedContent.split('\n').map((item: string) => item.trim()) } : exp
+          )
+        }));
+      } else if (section === 'education') {
+        setResume(prev => ({
+          ...prev,
+          education: prev.education.map((edu, index) => 
+            index === 0 ? { ...edu, fieldOfStudy: generatedContent } : edu
           )
         }));
       }
@@ -509,6 +572,15 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
           <Button onClick={() => regenerateSection('summary')} className="bg-green-500 hover:bg-green-600 text-white">
             Regenerate
           </Button>
+          <Button
+            onClick={() => {
+              const customPrompt = prompt('Enter a custom prompt for summary:');
+              if (customPrompt) handleCustomRegenerate('summary', customPrompt);
+            }}
+            className="bg-yellow-500 hover:bg-yellow-600 text-white"
+          >
+            Custom Regenerate
+          </Button>
         </div>
         <Textarea
           value={resume.summary || ''}
@@ -524,6 +596,15 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
           </Button>
           <Button onClick={() => regenerateSection('skills')} className="bg-green-500 hover:bg-green-600 text-white">
             Regenerate
+          </Button>
+          <Button
+            onClick={() => {
+              const customPrompt = prompt('Enter a custom prompt for skills:');
+              if (customPrompt) handleCustomRegenerate('skills', customPrompt);
+            }}
+            className="bg-yellow-500 hover:bg-yellow-600 text-white"
+          >
+            Custom Regenerate
           </Button>
         </div>
         <div className="space-y-2">
@@ -583,13 +664,27 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
               placeholder="Description (one bullet point per line)"
               rows={5}
             />
+            <Button
+              onClick={() => {
+                const customPrompt = prompt('Enter a custom prompt for experience:');
+                if (customPrompt) handleCustomRegenerate('experience', customPrompt);
+              }}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+            >
+              Custom Regenerate
+            </Button>
             <Button onClick={() => deleteExperience(index)} className="bg-red-500 hover:bg-red-600 text-white">
               <FaTrash className="mr-2" /> Delete Experience
             </Button>
           </div>
         ))}
 
-        <h3 className="text-xl font-semibold">Education</h3>
+        <div className="flex items-center space-x-2">
+          <h3 className="text-xl font-semibold">Education</h3>
+          <Button onClick={() => regenerateSection('education')} className="bg-green-500 hover:bg-green-600 text-white">
+            Regenerate
+          </Button>
+        </div>
         {resume.education.map((edu, index) => (
           <div key={index} className="space-y-2 border p-4 rounded">
             <Input
@@ -607,6 +702,15 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
               onChange={(e) => handleEducationChange(index, 'graduationDate', e.target.value)}
               placeholder="Graduation Date"
             />
+            <Button
+              onClick={() => {
+                const customPrompt = prompt('Enter a custom prompt for education:');
+                if (customPrompt) handleCustomRegenerate('education', customPrompt);
+              }}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+            >
+              Custom Regenerate
+            </Button>
             <Button onClick={() => deleteEducation(index)} className="bg-red-500 hover:bg-red-600 text-white">
               <FaTrash className="mr-2" /> Delete Education
             </Button>
