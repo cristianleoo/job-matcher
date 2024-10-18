@@ -10,6 +10,7 @@ import { Experience, Education, Project, UserProfile } from '@/app/types';
 import axios from 'axios';
 import { calculateSimilarity } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
+import { ChatInterface } from '@/components/ChatInterface';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
@@ -38,6 +39,8 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [hiddenSections, setHiddenSections] = useState<Set<string>>(new Set());
   const [similarityScore, setSimilarityScore] = useState<number>(0);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [currentSection, setCurrentSection] = useState<'summary' | 'skills' | 'experience' | 'education' | null>(null);
 
   useEffect(() => {
     if (user && supabaseUserId) {
@@ -372,55 +375,32 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
     }
   };
 
-  const handleCustomRegenerate = async (section: 'summary' | 'skills' | 'experience' | 'education', customPrompt: string) => {
-    try {
-      let prompt = '';
-      let currentContent = '';
+  const handleCustomRegenerate = (section: 'summary' | 'skills' | 'experience' | 'education') => {
+    setCurrentSection(section);
+    setChatOpen(true);
+  };
 
-      if (section === 'summary') {
-        prompt = `Based on the following resume content and job description, create a brief professional summary that highlights why the candidate is a good fit for the position. Do not invent new information. Make sure to include the following: ${customPrompt}`;
-        currentContent = `Resume: ${JSON.stringify(resume)}\n\nJob Description: ${jobDescription}`;
-      } else if (section === 'skills') {
-        prompt = `Based on the following resume skills and job description, provide a comma-separated list of the most relevant skills. Only include skills that are mentioned in the resume. Make sure to include the following: ${customPrompt}`;
-        currentContent = `Current Skills: ${resume.skills.join(', ')}\n\nJob Description: ${jobDescription}`;
-      } else if (section === 'experience') {
-        const mostRecentJob = resume.experience[0];
-        prompt = `Improve the following job description to better match the job posting. Only use information provided in the original description. Make sure to include the following: ${customPrompt}`;
-        currentContent = `Current Job Description for ${mostRecentJob.position} at ${mostRecentJob.company}:\n${mostRecentJob.description.join('\n')}\n\nJob Posting: ${jobDescription}`;
-      } else if (section === 'education') {
-        const mostRecentEducation = resume.education[0];
-        prompt = `Based on the following education details and job description, suggest improvements or additions to better align with the job requirements. Do not invent new information. Make sure to include the following: ${customPrompt}`;
-        currentContent = `Current Education: ${mostRecentEducation.degree} in ${mostRecentEducation.fieldOfStudy} from ${mostRecentEducation.institution}, graduated on ${mostRecentEducation.graduationDate}\n\nJob Description: ${jobDescription}`;
-      }
-
-      console.log('Prompt:', prompt);
-
-      const response = await axios.post('/api/generate-content', { prompt, currentContent, section, jobDescription });
-      const generatedContent = response.data.generatedContent;
-
-      if (section === 'summary') {
-        setResume(prev => ({ ...prev, summary: generatedContent }));
-      } else if (section === 'skills') {
-        setResume(prev => ({ ...prev, skills: generatedContent.split(', ').map((skill: string) => skill.trim()) }));
-      } else if (section === 'experience') {
-        setResume(prev => ({
-          ...prev,
-          experience: prev.experience.map((exp, index) => 
-            index === 0 ? { ...exp, description: generatedContent.split('\n').map((item: string) => item.trim()) } : exp
-          )
-        }));
-      } else if (section === 'education') {
-        setResume(prev => ({
-          ...prev,
-          education: prev.education.map((edu, index) => 
-            index === 0 ? { ...edu, fieldOfStudy: generatedContent } : edu
-          )
-        }));
-      }
-    } catch (error) {
-      console.error('Error regenerating content:', error);
-      // Handle the error appropriately (e.g., show an error message to the user)
+  const handleApplyChanges = (content: string) => {
+    if (currentSection === 'summary') {
+      setResume(prev => ({ ...prev, summary: content }));
+    } else if (currentSection === 'skills') {
+      setResume(prev => ({ ...prev, skills: content.split(', ').map(skill => skill.trim()) }));
+    } else if (currentSection === 'experience') {
+      setResume(prev => ({
+        ...prev,
+        experience: prev.experience.map((exp, index) => 
+          index === 0 ? { ...exp, description: content.split('\n').map(item => item.trim()) } : exp
+        )
+      }));
+    } else if (currentSection === 'education') {
+      setResume(prev => ({
+        ...prev,
+        education: prev.education.map((edu, index) => 
+          index === 0 ? { ...edu, fieldOfStudy: content } : edu
+        )
+      }));
     }
+    setChatOpen(false);
   };
 
   return (
@@ -520,270 +500,268 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
         </div>
       </div>
 
-      {/* Edit Form */}
-      <div className="w-1/2 space-y-4 overflow-y-auto pb-20 max-h-screen">
-        <Input
-          value={resume.name}
-          onChange={(e) => handleInputChange('name', e.target.value)}
-          placeholder="Full Name"
-        />
-        <Input
-          value={resume.email}
-          onChange={(e) => handleInputChange('email', e.target.value)}
-          placeholder="Email"
-        />
-        <Input
-          value={resume.phone}
-          onChange={(e) => handleInputChange('phone', e.target.value)}
-          placeholder="Phone"
-        />
-        <Input
-          value={resume.location}
-          onChange={(e) => handleInputChange('location', e.target.value)}
-          placeholder="Location"
-        />
-        <div className="flex items-center space-x-2">
-          <Input
-            value={resume.linkedin}
-            onChange={(e) => handleInputChange('linkedin', e.target.value)}
-            placeholder="LinkedIn URL"
+      {/* Edit Form or Chat Interface */}
+      {chatOpen ? (
+        <div className="w-1/2">
+          <ChatInterface
+            onClose={() => setChatOpen(false)}
+            onApply={handleApplyChanges}
+            section={currentSection!}
           />
-          <Button onClick={() => toggleSection('linkedin')} className="bg-blue-500 hover:bg-blue-600 text-white">
-            {hiddenSections.has('linkedin') ? 'Show' : 'Hide'}
-          </Button>
         </div>
-
-        <div className="flex items-center space-x-2">
+      ) : (
+        <div className="w-1/2 space-y-4 overflow-y-auto pb-20 max-h-screen">
           <Input
-            value={resume.portfolio}
-            onChange={(e) => handleInputChange('portfolio', e.target.value)}
-            placeholder="Portfolio URL"
+            value={resume.name}
+            onChange={(e) => handleInputChange('name', e.target.value)}
+            placeholder="Full Name"
           />
-          <Button onClick={() => toggleSection('portfolio')} className="bg-blue-500 hover:bg-blue-600 text-white">
-            {hiddenSections.has('portfolio') ? 'Show' : 'Hide'}
-          </Button>
-        </div>
+          <Input
+            value={resume.email}
+            onChange={(e) => handleInputChange('email', e.target.value)}
+            placeholder="Email"
+          />
+          <Input
+            value={resume.phone}
+            onChange={(e) => handleInputChange('phone', e.target.value)}
+            placeholder="Phone"
+          />
+          <Input
+            value={resume.location}
+            onChange={(e) => handleInputChange('location', e.target.value)}
+            placeholder="Location"
+          />
+          <div className="flex items-center space-x-2">
+            <Input
+              value={resume.linkedin}
+              onChange={(e) => handleInputChange('linkedin', e.target.value)}
+              placeholder="LinkedIn URL"
+            />
+            <Button onClick={() => toggleSection('linkedin')} className="bg-blue-500 hover:bg-blue-600 text-white">
+              {hiddenSections.has('linkedin') ? 'Show' : 'Hide'}
+            </Button>
+          </div>
 
-        <div className="flex items-center space-x-2">
-          <h3 className="text-xl font-semibold">Professional Summary</h3>
-          <Button onClick={() => toggleSection('summary')} className="bg-blue-500 hover:bg-blue-600 text-white">
-            {hiddenSections.has('summary') ? 'Show' : 'Hide'}
-          </Button>
-          <Button onClick={() => regenerateSection('summary')} className="bg-green-500 hover:bg-green-600 text-white">
-            Regenerate
-          </Button>
-          <Button
-            onClick={() => {
-              const customPrompt = prompt('Enter a custom prompt for summary:');
-              if (customPrompt) handleCustomRegenerate('summary', customPrompt);
-            }}
-            className="bg-yellow-500 hover:bg-yellow-600 text-white"
-          >
-            Custom Regenerate
-          </Button>
-        </div>
-        <Textarea
-          value={resume.summary || ''}
-          onChange={(e) => handleInputChange('summary', e.target.value)}
-          placeholder="Professional Summary"
-          rows={4}
-        />
+          <div className="flex items-center space-x-2">
+            <Input
+              value={resume.portfolio}
+              onChange={(e) => handleInputChange('portfolio', e.target.value)}
+              placeholder="Portfolio URL"
+            />
+            <Button onClick={() => toggleSection('portfolio')} className="bg-blue-500 hover:bg-blue-600 text-white">
+              {hiddenSections.has('portfolio') ? 'Show' : 'Hide'}
+            </Button>
+          </div>
 
-        <div className="flex items-center space-x-2">
-          <h3 className="text-xl font-semibold">Skills</h3>
-          <Button onClick={() => toggleSection('skills')} className="bg-blue-500 hover:bg-blue-600 text-white">
-            {hiddenSections.has('skills') ? 'Show' : 'Hide'}
-          </Button>
-          <Button onClick={() => regenerateSection('skills')} className="bg-green-500 hover:bg-green-600 text-white">
-            Regenerate
-          </Button>
-          <Button
-            onClick={() => {
-              const customPrompt = prompt('Enter a custom prompt for skills:');
-              if (customPrompt) handleCustomRegenerate('skills', customPrompt);
-            }}
-            className="bg-yellow-500 hover:bg-yellow-600 text-white"
-          >
-            Custom Regenerate
-          </Button>
-        </div>
-        <div className="space-y-2">
-          {resume.skills.map((skill, index) => (
-            <div key={index} className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2">
+            <h3 className="text-xl font-semibold">Professional Summary</h3>
+            <Button onClick={() => toggleSection('summary')} className="bg-blue-500 hover:bg-blue-600 text-white">
+              {hiddenSections.has('summary') ? 'Show' : 'Hide'}
+            </Button>
+            <Button onClick={() => regenerateSection('summary')} className="bg-green-500 hover:bg-green-600 text-white">
+              Regenerate
+            </Button>
+            <Button
+              onClick={() => handleCustomRegenerate('summary')}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+            >
+              Custom Regenerate
+            </Button>
+          </div>
+          <Textarea
+            value={resume.summary || ''}
+            onChange={(e) => handleInputChange('summary', e.target.value)}
+            placeholder="Professional Summary"
+            rows={4}
+          />
+
+          <div className="flex items-center space-x-2">
+            <h3 className="text-xl font-semibold">Skills</h3>
+            <Button onClick={() => toggleSection('skills')} className="bg-blue-500 hover:bg-blue-600 text-white">
+              {hiddenSections.has('skills') ? 'Show' : 'Hide'}
+            </Button>
+            <Button onClick={() => regenerateSection('skills')} className="bg-green-500 hover:bg-green-600 text-white">
+              Regenerate
+            </Button>
+            <Button
+              onClick={() => handleCustomRegenerate('skills')}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+            >
+              Custom Regenerate
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {resume.skills.map((skill, index) => (
+              <div key={index} className="flex items-center space-x-2">
+                <Input
+                  value={skill}
+                  onChange={(e) => {
+                    const newSkills = [...resume.skills];
+                    newSkills[index] = e.target.value;
+                    handleInputChange('skills', newSkills);
+                  }}
+                />
+                <Button onClick={() => deleteSkill(index)} className="bg-red-500 hover:bg-red-600 text-white">
+                  <FaTrash />
+                </Button>
+              </div>
+            ))}
+            <Button onClick={() => handleInputChange('skills', [...resume.skills, ''])} className="bg-green-500 hover:bg-green-600 text-white">
+              Add Skill
+            </Button>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <h3 className="text-xl font-semibold">Experience</h3>
+            <Button onClick={() => regenerateSection('experience')} className="bg-green-500 hover:bg-green-600 text-white">
+              Regenerate
+            </Button>
+            <Button
+              onClick={() => handleCustomRegenerate('experience')}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+            >
+              Custom Regenerate
+            </Button>
+          </div>
+          {resume.experience.map((exp, index) => (
+            <div key={index} className="space-y-2 border p-4 rounded">
               <Input
-                value={skill}
-                onChange={(e) => {
-                  const newSkills = [...resume.skills];
-                  newSkills[index] = e.target.value;
-                  handleInputChange('skills', newSkills);
-                }}
+                value={exp.position}
+                onChange={(e) => handleExperienceChange(index, 'position', e.target.value)}
+                placeholder="Position"
               />
-              <Button onClick={() => deleteSkill(index)} className="bg-red-500 hover:bg-red-600 text-white">
-                <FaTrash />
+              <Input
+                value={exp.company}
+                onChange={(e) => handleExperienceChange(index, 'company', e.target.value)}
+                placeholder="Company"
+              />
+              <div className="flex space-x-2">
+                <Input
+                  value={exp.startDate}
+                  onChange={(e) => handleExperienceChange(index, 'startDate', e.target.value)}
+                  placeholder="Start Date"
+                />
+                <Input
+                  value={exp.endDate}
+                  onChange={(e) => handleExperienceChange(index, 'endDate', e.target.value)}
+                  placeholder="End Date"
+                />
+              </div>
+              <Textarea
+                value={exp.description.map(item => `• ${item.replace(/^[•-]\s*/, '')}`).join('\n')}
+                onChange={(e) => handleExperienceChange(index, 'description', e.target.value)}
+                placeholder="Description (one bullet point per line)"
+                rows={5}
+              />
+              <Button onClick={() => deleteExperience(index)} className="bg-red-500 hover:bg-red-600 text-white">
+                <FaTrash className="mr-2" /> Delete Experience
               </Button>
             </div>
           ))}
-          <Button onClick={() => handleInputChange('skills', [...resume.skills, ''])} className="bg-green-500 hover:bg-green-600 text-white">
-            Add Skill
-          </Button>
-        </div>
 
-        <div className="flex items-center space-x-2">
-          <h3 className="text-xl font-semibold">Experience</h3>
-          <Button onClick={() => regenerateSection('experience')} className="bg-green-500 hover:bg-green-600 text-white">
-            Regenerate
-          </Button>
-        </div>
-        {resume.experience.map((exp, index) => (
-          <div key={index} className="space-y-2 border p-4 rounded">
-            <Input
-              value={exp.position}
-              onChange={(e) => handleExperienceChange(index, 'position', e.target.value)}
-              placeholder="Position"
-            />
-            <Input
-              value={exp.company}
-              onChange={(e) => handleExperienceChange(index, 'company', e.target.value)}
-              placeholder="Company"
-            />
-            <div className="flex space-x-2">
+          <div className="flex items-center space-x-2">
+            <h3 className="text-xl font-semibold">Education</h3>
+            <Button onClick={() => regenerateSection('education')} className="bg-green-500 hover:bg-green-600 text-white">
+              Regenerate
+            </Button>
+            <Button
+              onClick={() => handleCustomRegenerate('education')}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+            >
+              Custom Regenerate
+            </Button>
+          </div>
+          {resume.education.map((edu, index) => (
+            <div key={index} className="space-y-2 border p-4 rounded">
               <Input
-                value={exp.startDate}
-                onChange={(e) => handleExperienceChange(index, 'startDate', e.target.value)}
-                placeholder="Start Date"
+                value={edu.institution}
+                onChange={(e) => handleEducationChange(index, 'institution', e.target.value)}
+                placeholder="Institution"
               />
               <Input
-                value={exp.endDate}
-                onChange={(e) => handleExperienceChange(index, 'endDate', e.target.value)}
-                placeholder="End Date"
+                value={edu.degree}
+                onChange={(e) => handleEducationChange(index, 'degree', e.target.value)}
+                placeholder="Degree"
               />
+              <Input
+                value={edu.graduationDate}
+                onChange={(e) => handleEducationChange(index, 'graduationDate', e.target.value)}
+                placeholder="Graduation Date"
+              />
+              <Button onClick={() => deleteEducation(index)} className="bg-red-500 hover:bg-red-600 text-white">
+                <FaTrash className="mr-2" /> Delete Education
+              </Button>
             </div>
-            <Textarea
-              value={exp.description.map(item => `• ${item.replace(/^[•-]\s*/, '')}`).join('\n')}
-              onChange={(e) => handleExperienceChange(index, 'description', e.target.value)}
-              placeholder="Description (one bullet point per line)"
-              rows={5}
-            />
-            <Button
-              onClick={() => {
-                const customPrompt = prompt('Enter a custom prompt for experience:');
-                if (customPrompt) handleCustomRegenerate('experience', customPrompt);
-              }}
-              className="bg-yellow-500 hover:bg-yellow-600 text-white"
-            >
-              Custom Regenerate
-            </Button>
-            <Button onClick={() => deleteExperience(index)} className="bg-red-500 hover:bg-red-600 text-white">
-              <FaTrash className="mr-2" /> Delete Experience
+          ))}
+
+          <div className="flex items-center space-x-2">
+            <h3 className="text-xl font-semibold">Projects</h3>
+            <Button onClick={() => toggleSection('projects')} className="bg-blue-500 hover:bg-blue-600 text-white">
+              {hiddenSections.has('projects') ? 'Show' : 'Hide'}
             </Button>
           </div>
-        ))}
-
-        <div className="flex items-center space-x-2">
-          <h3 className="text-xl font-semibold">Education</h3>
-          <Button onClick={() => regenerateSection('education')} className="bg-green-500 hover:bg-green-600 text-white">
-            Regenerate
+          {resume.projects.map((project, index) => (
+            <div key={index} className="space-y-2 border p-4 rounded">
+              <Input
+                value={project.name}
+                onChange={(e) => handleProjectChange(index, 'name', e.target.value)}
+                placeholder="Project Name"
+              />
+              <Textarea
+                value={project.description.join('\n')}
+                onChange={(e) => handleProjectChange(index, 'description', e.target.value)}
+                placeholder="Project Description (one bullet point per line)"
+                rows={5}
+              />
+              <Input
+                value={project.technologies.join(', ')}
+                onChange={(e) => handleProjectChange(index, 'technologies', e.target.value)}
+                placeholder="Technologies (comma-separated)"
+              />
+              <Button onClick={() => deleteProject(index)} className="bg-red-500 hover:bg-red-600 text-white">
+                <FaTrash className="mr-2" /> Delete Project
+              </Button>
+            </div>
+          ))}
+          <Button 
+            onClick={() => setResume(prev => ({ ...prev, projects: [...prev.projects, { name: '', description: [], technologies: [] }] }))} 
+            className="bg-green-500 hover:bg-green-600 text-white"
+          >
+            Add Project
           </Button>
-        </div>
-        {resume.education.map((edu, index) => (
-          <div key={index} className="space-y-2 border p-4 rounded">
-            <Input
-              value={edu.institution}
-              onChange={(e) => handleEducationChange(index, 'institution', e.target.value)}
-              placeholder="Institution"
-            />
-            <Input
-              value={edu.degree}
-              onChange={(e) => handleEducationChange(index, 'degree', e.target.value)}
-              placeholder="Degree"
-            />
-            <Input
-              value={edu.graduationDate}
-              onChange={(e) => handleEducationChange(index, 'graduationDate', e.target.value)}
-              placeholder="Graduation Date"
-            />
-            <Button
-              onClick={() => {
-                const customPrompt = prompt('Enter a custom prompt for education:');
-                if (customPrompt) handleCustomRegenerate('education', customPrompt);
-              }}
-              className="bg-yellow-500 hover:bg-yellow-600 text-white"
-            >
-              Custom Regenerate
-            </Button>
-            <Button onClick={() => deleteEducation(index)} className="bg-red-500 hover:bg-red-600 text-white">
-              <FaTrash className="mr-2" /> Delete Education
-            </Button>
+
+          <div className="flex space-x-4 justify-center mt-6">
+            <Button onClick={handleSave} className="bg-blue-500 hover:bg-blue-600 text-white">Save Resume</Button>
+            <Button onClick={() => window.print()} className="bg-green-500 hover:bg-green-600 text-white">Print / Save as PDF</Button>
           </div>
-        ))}
 
-        <div className="flex items-center space-x-2">
-          <h3 className="text-xl font-semibold">Projects</h3>
-          <Button onClick={() => toggleSection('projects')} className="bg-blue-500 hover:bg-blue-600 text-white">
-            {hiddenSections.has('projects') ? 'Show' : 'Hide'}
-          </Button>
-        </div>
-        {resume.projects.map((project, index) => (
-          <div key={index} className="space-y-2 border p-4 rounded">
-            <Input
-              value={project.name}
-              onChange={(e) => handleProjectChange(index, 'name', e.target.value)}
-              placeholder="Project Name"
-            />
-            <Textarea
-              value={project.description.join('\n')}
-              onChange={(e) => handleProjectChange(index, 'description', e.target.value)}
-              placeholder="Project Description (one bullet point per line)"
-              rows={5}
-            />
-            <Input
-              value={project.technologies.join(', ')}
-              onChange={(e) => handleProjectChange(index, 'technologies', e.target.value)}
-              placeholder="Technologies (comma-separated)"
-            />
-            <Button onClick={() => deleteProject(index)} className="bg-red-500 hover:bg-red-600 text-white">
-              <FaTrash className="mr-2" /> Delete Project
-            </Button>
+          <div className="mt-4 bg-gray-100 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold mb-2">Suggestions:</h3>
+            <ul className="list-disc pl-5">
+              {suggestions.map((suggestion, index) => (
+                <li key={index}>{suggestion}</li>
+              ))}
+            </ul>
           </div>
-        ))}
-        <Button 
-          onClick={() => setResume(prev => ({ ...prev, projects: [...prev.projects, { name: '', description: [], technologies: [] }] }))} 
-          className="bg-green-500 hover:bg-green-600 text-white"
-        >
-          Add Project
-        </Button>
 
-        <div className="flex space-x-4 justify-center mt-6">
-          <Button onClick={handleSave} className="bg-blue-500 hover:bg-blue-600 text-white">Save Resume</Button>
-          <Button onClick={() => window.print()} className="bg-green-500 hover:bg-green-600 text-white">Print / Save as PDF</Button>
+          {/* Add these buttons after the existing input fields in the edit form */}
+          {resume.linkedin === undefined && (
+            <Button onClick={() => addField('linkedin')} className="bg-green-500 hover:bg-green-600 text-white">
+              Add LinkedIn
+            </Button>
+          )}
+          {resume.portfolio === undefined && (
+            <Button onClick={() => addField('portfolio')} className="bg-green-500 hover:bg-green-600 text-white">
+              Add Portfolio
+            </Button>
+          )}
+          {resume.summary === undefined && (
+            <Button onClick={() => addField('summary')} className="bg-green-500 hover:bg-green-600 text-white">
+              Add Professional Summary
+            </Button>
+          )}
         </div>
-
-        <div className="mt-4 bg-gray-100 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold mb-2">Suggestions:</h3>
-          <ul className="list-disc pl-5">
-            {suggestions.map((suggestion, index) => (
-              <li key={index}>{suggestion}</li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Add these buttons after the existing input fields in the edit form */}
-        {resume.linkedin === undefined && (
-          <Button onClick={() => addField('linkedin')} className="bg-green-500 hover:bg-green-600 text-white">
-            Add LinkedIn
-          </Button>
-        )}
-        {resume.portfolio === undefined && (
-          <Button onClick={() => addField('portfolio')} className="bg-green-500 hover:bg-green-600 text-white">
-            Add Portfolio
-          </Button>
-        )}
-        {resume.summary === undefined && (
-          <Button onClick={() => addField('summary')} className="bg-green-500 hover:bg-green-600 text-white">
-            Add Professional Summary
-          </Button>
-        )}
-      </div>
+      )}
     </div>
   );
 }
