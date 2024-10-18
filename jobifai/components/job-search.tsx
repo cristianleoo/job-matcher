@@ -5,13 +5,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 interface Job {
+  id: string;
   title: string;
   company: string;
   location: string;
-  link: string;
-  remote: boolean;
-  jobTypes: string[];
-  tags: string[];
+  url: string;
+  remoteOk: boolean;
+  date: string;
+  descriptionHtml?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  salaryCurrency?: string;
+  stackRequired?: string[];
+  tags?: string[];
 }
 
 export function JobSearch() {
@@ -21,14 +27,26 @@ export function JobSearch() {
   const [isLoading, setIsLoading] = useState(false);
 
   const searchJobs = async () => {
+    console.log('Searching jobs with keyword:', keyword, 'and location:', location);
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/job-search?keyword=${encodeURIComponent(keyword)}&location=${encodeURIComponent(location)}`);
+      console.log('Sending request to /api/linkedin-scraper');
+      const response = await fetch('/api/linkedin-scraper', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ keyword, location }),
+      });
+      console.log('Response status:', response.status);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
-      console.log('Data received:', data); // Add this line
+      console.log('LinkedIn jobs scraped:', data);
       setJobs(data);
     } catch (error) {
-      console.error('Error fetching jobs:', error);
+      console.error('Error scraping LinkedIn jobs:', error);
     } finally {
       setIsLoading(false);
     }
@@ -62,23 +80,23 @@ export function JobSearch() {
             <h3 className="font-bold text-lg">{job.title}</h3>
             <p className="text-sm text-gray-600">{job.company} - {job.location}</p>
             <p className="mt-2">
-              <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${job.remote ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-800'}`}>
-                {job.remote ? 'Remote' : 'On-site'}
+              <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${job.remoteOk ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-800'}`}>
+                {job.remoteOk ? 'Remote' : 'On-site'}
               </span>
-              {job.jobTypes.map((type, i) => (
+              {job.stackRequired?.map((type, i) => (
                 <span key={i} className="ml-2 inline-block px-2 py-1 text-xs font-semibold rounded-full bg-blue-200 text-blue-800">
                   {type}
                 </span>
               ))}
             </p>
             <div className="mt-2">
-              {job.tags.map((tag, i) => (
+              {job.tags?.map((tag, i) => (
                 <span key={i} className="inline-block mr-2 mb-2 px-2 py-1 text-xs bg-gray-100 rounded">
                   {tag}
                 </span>
               ))}
             </div>
-            <a href={job.link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-blue-500 hover:underline">
+            <a href={job.url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-blue-500 hover:underline">
               View Job
             </a>
           </div>

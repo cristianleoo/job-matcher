@@ -329,6 +329,33 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
     setShowInterviewPlan(true);
   };
 
+  const handleScrapeJobUrl = async (url: string) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/scrape-linkedin-job', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to scrape job data');
+      }
+
+      const jobData = await response.json();
+      
+      // Use the existing extractJobInfo function to parse the scraped content
+      await extractJobInfo(jobData.description, 'content');
+    } catch (error) {
+      console.error('Error scraping job:', error);
+      alert('Failed to scrape job data. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-4">Add New Job Application</h2>
@@ -342,10 +369,11 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
           Paste Content
         </button>
         <button
-          className={`w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-gray-400 cursor-not-allowed flex items-center justify-center`}
-          title="Coming Soon"
+          onClick={() => setActiveTab('url')}
+          className={`w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-blue-700
+            ${activeTab === 'url' ? 'bg-white shadow' : 'text-blue-100 hover:bg-white/[0.12] hover:text-white'}`}
         >
-          Enter URL <FaLock className="ml-2" />
+          Enter URL
         </button>
       </div>
 
@@ -365,6 +393,24 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
             {isLoading ? 'Extracting...' : 'Extract Job Info'}
           </button>
         </>
+      )}
+
+      {activeTab === 'url' && (
+        <div>
+          <input
+            type="text"
+            value={jobUrl}
+            onChange={(e) => setJobUrl(e.target.value)}
+            placeholder="Enter LinkedIn job URL"
+            className="w-full p-2 border rounded"
+          />
+          <button
+            onClick={() => handleScrapeJobUrl(jobUrl)}
+            className="mt-2 bg-blue-500 text-white p-2 rounded w-full"
+          >
+            Scrape Job Info
+          </button>
+        </div>
       )}
 
       {isLoading && (
