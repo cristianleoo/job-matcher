@@ -6,16 +6,21 @@ import Link from 'next/link';
 import { useUserStore } from '@/lib/userStore';
 import { AddJobForm } from './add-job-form';
 import React from 'react';
-import { FaLock } from 'react-icons/fa'; // Import the lock icon
 import { ResumeEditor } from './resume-editor';
 import { motion } from 'framer-motion';
-import { EyeIcon, PencilSquareIcon, TrashIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, PencilSquareIcon, TrashIcon, AcademicCapIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
-import { calculateCosineSimilarity } from '@/lib/utils'; // Add this import
+import { calculateCosineSimilarity } from '@/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface JobApplication {
-  id: string;
+  id?: string; // Make id optional
   title: string;
   company: string;
   status: string;
@@ -340,8 +345,13 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
   };
 
   const handlePrepareInterview = (job: JobApplication) => {
-    setSelectedJobId(job.id);
-    setShowInterviewPlan(true);
+    if (job.id) {
+      setSelectedJobId(job.id);
+      setShowInterviewPlan(true);
+    } else {
+      console.error('Job ID is undefined');
+      // Optionally, you can show an error message to the user
+    }
   };
 
   const handleScrapeJobUrl = async (url: string) => {
@@ -394,203 +404,165 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
   };
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">Add New Job Application</h2>
-      
-      <div className="flex space-x-1 rounded-xl bg-blue-900/20 p-1 mb-4">
-        <button
-          onClick={() => setActiveTab('content')}
-          className={`w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-blue-700
-            ${activeTab === 'content' ? 'bg-white shadow' : 'text-blue-100 hover:bg-white/[0.12] hover:text-white'}`}
-        >
-          Paste Content
-        </button>
-        <button
-          onClick={() => setActiveTab('url')}
-          className={`w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-blue-700
-            ${activeTab === 'url' ? 'bg-white shadow' : 'text-blue-100 hover:bg-white/[0.12] hover:text-white'}`}
-        >
-          Enter URL
-        </button>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">Job Applications</h1>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="flex items-center space-x-2">
+              <PlusIcon className="h-5 w-5" />
+              <span>Add New Job</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Add New Job Application</DialogTitle>
+            </DialogHeader>
+            <Tabs defaultValue="content" className="w-full mt-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="content">Paste Content</TabsTrigger>
+                <TabsTrigger value="url">Enter URL</TabsTrigger>
+              </TabsList>
+              <TabsContent value="content">
+                <textarea
+                  value={jobContent}
+                  onChange={(e) => setJobContent(e.target.value)}
+                  placeholder="Paste job posting content here"
+                  className="w-full p-2 border rounded h-40 mt-4"
+                />
+                <Button 
+                  onClick={() => extractJobInfo(jobContent, 'content')}
+                  className="w-full mt-4"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Extracting...' : 'Extract Job Info'}
+                </Button>
+              </TabsContent>
+              <TabsContent value="url">
+                <Input
+                  type="text"
+                  value={jobUrl}
+                  onChange={(e) => setJobUrl(e.target.value)}
+                  placeholder="Enter LinkedIn job URL"
+                  className="w-full mt-4"
+                />
+                <Button 
+                  onClick={() => handleScrapeJobUrl(jobUrl)}
+                  className="w-full mt-4"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Scraping...' : 'Scrape Job Info'}
+                </Button>
+              </TabsContent>
+            </Tabs>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {activeTab === 'content' && (
-        <>
-          <textarea
-            value={jobContent}
-            onChange={(e) => setJobContent(e.target.value)}
-            placeholder="Paste job posting content here"
-            className="w-full p-2 border rounded h-40"
-          />
-          <button
-            onClick={() => extractJobInfo(jobContent, 'content')}
-            className="mt-2 bg-blue-500 text-white p-2 rounded w-full"
-            disabled={isLoading}
-          >
-            {isLoading ? 'Extracting...' : 'Extract Job Info'}
-          </button>
-        </>
-      )}
-
-      {activeTab === 'url' && (
-        <div>
-          <input
-            type="text"
-            value={jobUrl}
-            onChange={(e) => setJobUrl(e.target.value)}
-            placeholder="Enter LinkedIn job URL"
-            className="w-full p-2 border rounded"
-          />
-          <button
-            onClick={() => handleScrapeJobUrl(jobUrl)}
-            className="mt-2 bg-blue-500 text-white p-2 rounded w-full"
-          >
-            Scrape Job Info
-          </button>
-        </div>
-      )}
-
-      {isLoading && (
-        <div className="flex flex-col items-center justify-center mt-8">
-          <div className="relative w-24 h-24">
-            {[0, 1, 2].map((index) => (
-              <motion.span
-                key={index}
-                className="absolute top-0 left-0 w-full h-full border-4 border-blue-500 rounded-full"
-                style={{ borderTopColor: 'transparent' }}
-                animate={{ rotate: 360 }}
-                transition={{
-                  duration: 1,
-                  repeat: Infinity,
-                  ease: 'linear',
-                  delay: index * 0.2,
-                }}
-              />
-            ))}
-          </div>
-          <p className="mt-4 text-lg font-semibold text-blue-600">Extracting job information...</p>
-        </div>
-      )}
-
       {showJobForm && extractedJobInfo && (
-        <div className="mt-4">
-          <h3 className="text-xl font-bold mb-2">Extracted Job Information</h3>
-          <AddJobForm onJobAdded={(jobData) => {
-            handleJobAdded({ ...jobData, id: Date.now().toString() }).catch(console.error);
-          }} extractedJobInfo={extractedJobInfo} />
-        </div>
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Add Job Application</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AddJobForm onJobAdded={handleJobAdded} extractedJobInfo={extractedJobInfo} />
+          </CardContent>
+        </Card>
       )}
 
       {showSuccessMessage && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mt-4 mb-4" role="alert">
+        <motion.div
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -50 }}
+          className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4"
+          role="alert"
+        >
           <strong className="font-bold">Success!</strong>
           <span className="block sm:inline"> Job added successfully.</span>
-        </div>
+        </motion.div>
       )}
 
-      <h2 className="text-2xl font-bold mb-4 mt-8">Your Applications</h2>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left text-gray-500">
-          <thead className="text-sm text-gray-700 uppercase bg-gray-50">
-            <tr>
-              <th scope="col" className="px-3 py-3">Title</th>
-              <th scope="col" className="px-3 py-3 text-center">Company</th>
-              <th scope="col" className="px-3 py-3 text-center">Location</th>
-              <th scope="col" className="px-3 py-3 text-center">Type</th>
-              <th scope="col" className="px-3 py-3 text-center">Experience</th>
-              <th scope="col" className="px-3 py-3 text-center">Remote</th>
-              <th scope="col" className="px-3 py-3 text-center">Status</th>
-              <th scope="col" className="px-3 py-3 text-center">Applied Date</th>
-              <th scope="col" className="px-3 py-3 text-center">Match</th>
-              <th scope="col" className="px-3 py-3 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {applications.map((app, index) => (
-              <tr key={app.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="px-3 py-4 font-medium text-gray-900 whitespace-nowrap">{app.title}</td>
-                <td className="px-3 py-4 text-center">{app.company}</td>
-                <td className="px-3 py-4 text-center">{app.location}</td>
-                <td className="px-3 py-4 text-center">{app.employment_type}</td>
-                <td className="px-3 py-4 text-center">{app.experience_level}</td>
-                <td className="px-3 py-4 text-center">{app.remote_type}</td>
-                <td className="px-3 py-4 text-center">
-                  <select
-                    value={app.status}
-                    onChange={(e) => handleStatusChange(app.id, e.target.value)}
-                    className={`p-2 rounded-full text-sm font-semibold ${getStatusColor(app.status)}`}
-                  >
-                    <option value="Not Applied">Not Applied</option>
-                    <option value="Applied">Applied</option>
-                    <option value="Interview">Interview</option>
-                    <option value="Offer">Offer</option>
-                    <option value="Rejected">Rejected</option>
-                  </select>
-                </td>
-                <td className="px-3 py-4 text-center">{new Date(app.applied_date).toLocaleDateString()}</td>
-                <td className="px-3 py-4 text-center">
-                  {renderSimilarityScore(app.similarity_score)}
-                </td>
-                <td className="px-3 py-4 text-center">
-                  <div className="flex justify-center space-x-3">
-                    <Link href={`/jobs/${app.id}`}>
-                      <button className="text-blue-600 hover:text-blue-800" title="View Details">
-                        <EyeIcon className="w-5 h-5" />
-                      </button>
-                    </Link>
-                    <button
-                      onClick={() => handleEditResume(app)}
-                      className="text-green-600 hover:text-green-800"
-                      title="Edit Resume"
-                    >
-                      <PencilSquareIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handlePrepareInterview(app)}
-                      className="text-yellow-600 hover:text-yellow-800"
-                      title="Prepare Interview"
-                    >
-                      <AcademicCapIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(app.id)}
-                      className="text-red-600 hover:text-red-800"
-                      title="Delete Application"
-                    >
-                      <TrashIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Applications</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left text-gray-500">
+              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3">Title</th>
+                  <th scope="col" className="px-6 py-3">Company</th>
+                  <th scope="col" className="px-6 py-3">Status</th>
+                  <th scope="col" className="px-6 py-3">Applied Date</th>
+                  <th scope="col" className="px-6 py-3">Match</th>
+                  <th scope="col" className="px-6 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {applications.map((app) => (
+                  <tr key={app.id} className="bg-white border-b hover:bg-gray-50">
+                    <td className="px-6 py-4 font-medium text-gray-900">{app.title}</td>
+                    <td className="px-6 py-4">{app.company}</td>
+                    <td className="px-6 py-4">
+                      <select
+                        value={app.status}
+                        onChange={(e) => handleStatusChange(app.id ?? '', e.target.value)}
+                        className={`p-2 rounded-full text-sm font-semibold ${getStatusColor(app.status)}`}
+                      >
+                        <option value="Not Applied">Not Applied</option>
+                        <option value="Applied">Applied</option>
+                        <option value="Interview">Interview</option>
+                        <option value="Offer">Offer</option>
+                        <option value="Rejected">Rejected</option>
+                      </select>
+                    </td>
+                    <td className="px-6 py-4">{new Date(app.applied_date).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">
+                      <div className="w-12 h-12">
+                        {renderSimilarityScore(app.similarity_score)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex space-x-2">
+                        <Link href={`/jobs/${app.id}`}>
+                          <Button variant="outline" size="icon" title="View Details">
+                            <EyeIcon className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <Button variant="outline" size="icon" title="Edit Resume" onClick={() => handleEditResume(app)}>
+                          <PencilSquareIcon className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="icon" title="Prepare Interview" onClick={() => handlePrepareInterview(app)}>
+                          <AcademicCapIcon className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="icon" title="Delete Application" onClick={() => handleDelete(app.id ?? '')}>
+                          <TrashIcon className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
       {showResumeEditor && selectedJob && userProfile && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 shadow-lg rounded-md bg-white">
-            <h2 className="text-2xl font-bold mb-4">Edit Resume for {selectedJob.title}</h2>
+        <Dialog open={showResumeEditor} onOpenChange={setShowResumeEditor}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Edit Resume for {selectedJob.title}</DialogTitle>
+            </DialogHeader>
             <ResumeEditor
               jobDescription={selectedJob.description}
-              userProfile={{ 
-                id: userProfile.id, 
-                name: userProfile.name, 
-                email: userProfile.email, 
-                experiences: userProfile.experiences, // ... existing code ...
-                education: userProfile.education, // Added missing property
-                projects: userProfile.projects // Added missing property
-              }}
+              userProfile={userProfile}
               onSave={handleSaveResume}
             />
-            <button
-              onClick={() => setShowResumeEditor(false)}
-              className="mt-4 bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
-            >
-              Close
-            </button>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* {showInterviewPlan && selectedJobId && (
