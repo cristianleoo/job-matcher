@@ -10,6 +10,10 @@ import { useUserStore } from '@/lib/userStore';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -468,186 +472,240 @@ export function UserProfileForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Resume upload section */}
-      <div>
-        <Label htmlFor="resume">Resume</Label>
-        <div className="flex items-center gap-2 mt-2">
-          <Input
-            id="resume"
-            type="file"
-            onChange={handleFileUpload}
-            className="hidden"
-            ref={fileInputRef}
-            accept=".pdf,.doc,.docx"
-          />
-          <Button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2"
-          >
-            <Upload className="h-4 w-4" />
-            {existingResume ? 'Update Resume' : 'Upload Resume'}
-          </Button>
-          {(resume || existingResume) && (
-            <div className="flex items-center gap-2">
-              <span>Resume loaded successfully</span>
-              <Button
-                type="button"
-                onClick={handleRemoveFile}
-                size="icon"
-                variant="destructive"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+    <form onSubmit={handleSubmit} className="max-w-4xl mx-auto p-6 space-y-8">
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center space-x-4">
+            <Avatar className="w-24 h-24">
+              <AvatarImage src={user?.imageUrl} alt={user?.fullName || "User"} />
+              <AvatarFallback>{user?.firstName?.[0]}{user?.lastName?.[0]}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-2xl font-bold">{user?.fullName}</h1>
+              <p className="text-gray-500">{profile.email}</p>
             </div>
-          )}
-          {existingResume && (
-            <>
-              <Button
-                type="button"
-                onClick={handleDownloadResume}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Download Resume
-              </Button>
-              <Button
-                type="button"
-                onClick={handleChatWithResume}
-                className="flex items-center gap-2"
-              >
-                <MessageSquare className="h-4 w-4" />
-                Chat with Resume
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="firstName">First Name</Label>
-          <Input id="firstName" name="firstName" value={profile.firstName} readOnly />
-        </div>
-        <div>
-          <Label htmlFor="lastName">Last Name</Label>
-          <Input id="lastName" name="lastName" value={profile.lastName} readOnly />
-        </div>
-        <div>
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" value={profile.email} readOnly />
-        </div>
-        <div>
-          <Label htmlFor="phone">Phone</Label>
-          <Input id="phone" name="phone" type="tel" value={profile.phone} onChange={handleChange} />
-        </div>
-        <div>
-          <Label htmlFor="location">Location</Label>
-          <Input id="location" name="location" value={profile.location} onChange={handleChange} />
-        </div>
-      </div>
-
-      <div>
-        <Label htmlFor="bio">Bio</Label>
-        <textarea id="bio" name="bio" value={profile.bio} onChange={handleChange} className="w-full p-2 border rounded" />
-      </div>
-
-      <div>
-        <Label>Skills</Label>
-        {profile.skills.map((skill, index) => (
-          <div key={index} className="flex items-center gap-2 mt-2">
-            <Input
-              value={skill}
-              onChange={(e) => handleArrayChange(index, 'skills', null, e.target.value)}
-            />
-            {index === profile.skills.length - 1 ? (
-              <Button type="button" onClick={() => handleAddItem('skills')} size="icon"><PlusCircle className="h-4 w-4" /></Button>
-            ) : (
-              <Button type="button" onClick={() => handleRemoveItem('skills', index)} size="icon" variant="destructive"><MinusCircle className="h-4 w-4" /></Button>
-            )}
           </div>
-        ))}
-      </div>
+        </CardContent>
+      </Card>
 
-      <div>
-        <Label>Work Experience</Label>
-        {profile.workExperience.map((exp, index) => (
-          <div key={index} className="border p-4 rounded-md mt-2">
-            <Input className="mb-2" placeholder="Company" value={exp.company} onChange={(e) => handleArrayChange(index, 'workExperience', 'company', e.target.value)} />
-            <Input className="mb-2" placeholder="Position" value={exp.position} onChange={(e) => handleArrayChange(index, 'workExperience', 'position', e.target.value)} />
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              <Input type="date" placeholder="Start Date" value={exp.startDate} onChange={(e) => handleArrayChange(index, 'workExperience', 'startDate', e.target.value)} />
-              <Input type="date" placeholder="End Date" value={exp.endDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleArrayChange(index, 'workExperience', 'endDate', e.target.value)} />
-            </div>
-            <textarea className="mb-2 w-full p-2 border rounded" placeholder="Description" value={exp.description} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleArrayChange(index, 'workExperience', 'description', e.target.value)} />
-            {index === profile.workExperience.length - 1 ? (
-              <Button type="button" onClick={() => handleAddItem('workExperience')}>Add Experience</Button>
-            ) : (
-              <Button type="button" onClick={() => handleRemoveItem('workExperience', index)} variant="destructive">Remove</Button>
-            )}
-          </div>
-        ))}
-      </div>
+      <Tabs defaultValue="personal" className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="personal">Personal</TabsTrigger>
+          <TabsTrigger value="professional">Professional</TabsTrigger>
+          <TabsTrigger value="education">Education</TabsTrigger>
+          <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
+          <TabsTrigger value="resume">Resume</TabsTrigger>
+        </TabsList>
 
-      <div>
-        <Label>Education</Label>
-        {profile.education.map((edu, index) => (
-          <div key={index} className="border p-4 rounded-md mt-2">
-            <Input className="mb-2" placeholder="Institution" value={edu.institution} onChange={(e) => handleArrayChange(index, 'education', 'institution', e.target.value)} />
-            <Input className="mb-2" placeholder="Degree" value={edu.degree} onChange={(e) => handleArrayChange(index, 'education', 'degree', e.target.value)} />
-            <Input className="mb-2" placeholder="Field of Study" value={edu.fieldOfStudy} onChange={(e) => handleArrayChange(index, 'education', 'fieldOfStudy', e.target.value)} />
-            <Input type="date" placeholder="Graduation Date" value={edu.graduationDate} onChange={(e) => handleArrayChange(index, 'education', 'graduationDate', e.target.value)} />
-            {index === profile.education.length - 1 ? (
-              <Button type="button" onClick={() => handleAddItem('education')} className="mt-2">Add Education</Button>
-            ) : (
-              <Button type="button" onClick={() => handleRemoveItem('education', index)} variant="destructive" className="mt-2">Remove</Button>
-            )}
-          </div>
-        ))}
-      </div>
+        <TabsContent value="personal">
+          <Card>
+            <CardHeader>
+              <CardTitle>Personal Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input id="firstName" name="firstName" value={profile.firstName} readOnly />
+                </div>
+                <div>
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input id="lastName" name="lastName" value={profile.lastName} readOnly />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" name="email" type="email" value={profile.email} readOnly />
+                </div>
+                <div>
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input id="phone" name="phone" type="tel" value={profile.phone} onChange={handleChange} />
+                </div>
+                <div>
+                  <Label htmlFor="location">Location</Label>
+                  <Input id="location" name="location" value={profile.location} onChange={handleChange} />
+                </div>
+              </div>
+              <div className="mt-4">
+                <Label htmlFor="bio">Bio</Label>
+                <textarea id="bio" name="bio" value={profile.bio} onChange={handleChange} className="w-full p-2 border rounded" rows={4} />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      <div>
-        <Label>Portfolio Links</Label>
-        {profile.portfolioLinks.map((link, index) => (
-          <div key={index} className="flex items-center gap-2 mt-2">
-            <Input
-              type="url"
-              value={link}
-              onChange={(e) => handleArrayChange(index, 'portfolioLinks', null, e.target.value)}
-              placeholder="https://..."
-            />
-            {index === profile.portfolioLinks.length - 1 ? (
-              <Button type="button" onClick={() => handleAddItem('portfolioLinks')} size="icon"><PlusCircle className="h-4 w-4" /></Button>
-            ) : (
-              <Button type="button" onClick={() => handleRemoveItem('portfolioLinks', index)} size="icon" variant="destructive"><MinusCircle className="h-4 w-4" /></Button>
-            )}
-          </div>
-        ))}
-      </div>
+        <TabsContent value="professional">
+          <Card>
+            <CardHeader>
+              <CardTitle>Professional Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <h3 className="text-lg font-semibold mb-4">Skills</h3>
+              {profile.skills.map((skill, index) => (
+                <div key={index} className="flex items-center gap-2 mt-2">
+                  <Input
+                    value={skill}
+                    onChange={(e) => handleArrayChange(index, 'skills', null, e.target.value)}
+                  />
+                  {index === profile.skills.length - 1 ? (
+                    <Button type="button" onClick={() => handleAddItem('skills')} size="icon"><PlusCircle className="h-4 w-4" /></Button>
+                  ) : (
+                    <Button type="button" onClick={() => handleRemoveItem('skills', index)} size="icon" variant="destructive"><MinusCircle className="h-4 w-4" /></Button>
+                  )}
+                </div>
+              ))}
 
-      <div>
-        <Label>Job Preferences</Label>
-        <Input className="mt-2" placeholder="Desired Position" value={profile.jobPreferences.desiredPosition} onChange={(e) => setProfile(prev => ({ ...prev, jobPreferences: { ...prev.jobPreferences, desiredPosition: e.target.value } }))} />
-        <Input className="mt-2" placeholder="Desired Industry" value={profile.jobPreferences.desiredIndustry} onChange={(e) => setProfile(prev => ({ ...prev, jobPreferences: { ...prev.jobPreferences, desiredIndustry: e.target.value } }))} />
-        <Input className="mt-2" placeholder="Desired Salary" type="number" value={profile.jobPreferences.desiredSalary} onChange={(e) => setProfile(prev => ({ ...prev, jobPreferences: { ...prev.jobPreferences, desiredSalary: e.target.value } }))} />
-        <Input className="mt-2" placeholder="Remote Preference" value={profile.jobPreferences.remotePreference} onChange={(e) => setProfile(prev => ({ ...prev, jobPreferences: { ...prev.jobPreferences, remotePreference: e.target.value } }))} />
-      </div>
+              <Separator className="my-6" />
 
-      <div>
-        <Label htmlFor="linkedinProfile">LinkedIn Profile</Label>
-        <Input id="linkedinProfile" name="linkedinProfile" value={profile.linkedinProfile} onChange={handleChange} />
-      </div>
-      <div>
-        <Label htmlFor="githubProfile">GitHub Profile</Label>
-        <Input id="githubProfile" name="githubProfile" value={profile.githubProfile} onChange={handleChange} />
-      </div>
-      <div>
-        <Label htmlFor="personalWebsite">Personal Website</Label>
-        <Input id="personalWebsite" name="personalWebsite" value={profile.personalWebsite} onChange={handleChange} />
-      </div>
+              <h3 className="text-lg font-semibold mb-4">Work Experience</h3>
+              {profile.workExperience.map((exp, index) => (
+                <div key={index} className="border p-4 rounded-md mt-2">
+                  <Input className="mb-2" placeholder="Company" value={exp.company} onChange={(e) => handleArrayChange(index, 'workExperience', 'company', e.target.value)} />
+                  <Input className="mb-2" placeholder="Position" value={exp.position} onChange={(e) => handleArrayChange(index, 'workExperience', 'position', e.target.value)} />
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <Input type="date" placeholder="Start Date" value={exp.startDate} onChange={(e) => handleArrayChange(index, 'workExperience', 'startDate', e.target.value)} />
+                    <Input type="date" placeholder="End Date" value={exp.endDate} onChange={(e) => handleArrayChange(index, 'workExperience', 'endDate', e.target.value)} />
+                  </div>
+                  <textarea className="mb-2 w-full p-2 border rounded" placeholder="Description" value={exp.description} onChange={(e) => handleArrayChange(index, 'workExperience', 'description', e.target.value)} />
+                  {index === profile.workExperience.length - 1 ? (
+                    <Button type="button" onClick={() => handleAddItem('workExperience')}>Add Experience</Button>
+                  ) : (
+                    <Button type="button" onClick={() => handleRemoveItem('workExperience', index)} variant="destructive">Remove</Button>
+                  )}
+                </div>
+              ))}
 
-      <Button type="submit" className="w-full">Update Profile</Button>
+              <Separator className="my-6" />
+
+              <h3 className="text-lg font-semibold mb-4">Job Preferences</h3>
+              <Input className="mt-2" placeholder="Desired Position" value={profile.jobPreferences.desiredPosition} onChange={(e) => setProfile(prev => ({ ...prev, jobPreferences: { ...prev.jobPreferences, desiredPosition: e.target.value } }))} />
+              <Input className="mt-2" placeholder="Desired Industry" value={profile.jobPreferences.desiredIndustry} onChange={(e) => setProfile(prev => ({ ...prev, jobPreferences: { ...prev.jobPreferences, desiredIndustry: e.target.value } }))} />
+              <Input className="mt-2" placeholder="Desired Salary" type="number" value={profile.jobPreferences.desiredSalary} onChange={(e) => setProfile(prev => ({ ...prev, jobPreferences: { ...prev.jobPreferences, desiredSalary: e.target.value } }))} />
+              <Input className="mt-2" placeholder="Remote Preference" value={profile.jobPreferences.remotePreference} onChange={(e) => setProfile(prev => ({ ...prev, jobPreferences: { ...prev.jobPreferences, remotePreference: e.target.value } }))} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="education">
+          <Card>
+            <CardHeader>
+              <CardTitle>Education</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {profile.education.map((edu, index) => (
+                <div key={index} className="border p-4 rounded-md mt-2">
+                  <Input className="mb-2" placeholder="Institution" value={edu.institution} onChange={(e) => handleArrayChange(index, 'education', 'institution', e.target.value)} />
+                  <Input className="mb-2" placeholder="Degree" value={edu.degree} onChange={(e) => handleArrayChange(index, 'education', 'degree', e.target.value)} />
+                  <Input className="mb-2" placeholder="Field of Study" value={edu.fieldOfStudy} onChange={(e) => handleArrayChange(index, 'education', 'fieldOfStudy', e.target.value)} />
+                  <Input type="date" placeholder="Graduation Date" value={edu.graduationDate} onChange={(e) => handleArrayChange(index, 'education', 'graduationDate', e.target.value)} />
+                  {index === profile.education.length - 1 ? (
+                    <Button type="button" onClick={() => handleAddItem('education')} className="mt-2">Add Education</Button>
+                  ) : (
+                    <Button type="button" onClick={() => handleRemoveItem('education', index)} variant="destructive" className="mt-2">Remove</Button>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="portfolio">
+          <Card>
+            <CardHeader>
+              <CardTitle>Portfolio</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <h3 className="text-lg font-semibold mb-4">Portfolio Links</h3>
+              {profile.portfolioLinks.map((link, index) => (
+                <div key={index} className="flex items-center gap-2 mt-2">
+                  <Input
+                    type="url"
+                    value={link}
+                    onChange={(e) => handleArrayChange(index, 'portfolioLinks', null, e.target.value)}
+                    placeholder="https://..."
+                  />
+                  {index === profile.portfolioLinks.length - 1 ? (
+                    <Button type="button" onClick={() => handleAddItem('portfolioLinks')} size="icon"><PlusCircle className="h-4 w-4" /></Button>
+                  ) : (
+                    <Button type="button" onClick={() => handleRemoveItem('portfolioLinks', index)} size="icon" variant="destructive"><MinusCircle className="h-4 w-4" /></Button>
+                  )}
+                </div>
+              ))}
+
+              <Separator className="my-6" />
+
+              <h3 className="text-lg font-semibold mb-4">Social Profiles</h3>
+              <div className="space-y-2">
+                <Input id="linkedinProfile" name="linkedinProfile" value={profile.linkedinProfile} onChange={handleChange} placeholder="LinkedIn Profile" />
+                <Input id="githubProfile" name="githubProfile" value={profile.githubProfile} onChange={handleChange} placeholder="GitHub Profile" />
+                <Input id="personalWebsite" name="personalWebsite" value={profile.personalWebsite} onChange={handleChange} placeholder="Personal Website" />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="resume">
+          <Card>
+            <CardHeader>
+              <CardTitle>Resume</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2 mt-2">
+                <Input
+                  id="resume"
+                  type="file"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  ref={fileInputRef}
+                  accept=".pdf,.doc,.docx"
+                />
+                <Button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  {existingResume ? 'Update Resume' : 'Upload Resume'}
+                </Button>
+                {(resume || existingResume) && (
+                  <div className="flex items-center gap-2">
+                    <span>Resume loaded successfully</span>
+                    <Button
+                      type="button"
+                      onClick={handleRemoveFile}
+                      size="icon"
+                      variant="destructive"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+                {existingResume && (
+                  <>
+                    <Button
+                      type="button"
+                      onClick={handleDownloadResume}
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download Resume
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleChatWithResume}
+                      className="flex items-center gap-2"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      Chat with Resume
+                    </Button>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <Button type="submit" className="w-full mt-6">Update Profile</Button>
     </form>
   );
 }
