@@ -5,7 +5,7 @@ import { useUser, useAuth } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, MinusCircle, Upload, X, MessageSquare, Download } from 'lucide-react';
+import { PlusCircle, MinusCircle, Upload, X, MessageSquare, Download, Camera } from 'lucide-react';
 import { useUserStore } from '@/lib/userStore';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
@@ -471,18 +471,87 @@ export function UserProfileForm() {
     }
   };
 
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setAvatarFile(e.target.files[0]);
+    }
+  };
+
+  const handleAvatarUpload = async () => {
+    if (!avatarFile || !supabaseUserId) return;
+
+    try {
+      const fileName = `${supabaseUserId}_avatar.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, avatarFile, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Update the user's avatar URL in your database
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ avatar_url: publicUrl })
+        .eq('id', supabaseUserId);
+
+      if (updateError) throw updateError;
+
+      // Update the local user state or refetch user data
+      // This depends on how you're managing user state in your app
+      // For example:
+      // setUser(prevUser => ({ ...prevUser, avatarUrl: publicUrl }));
+
+      alert('Profile picture updated successfully!');
+    } catch (error) {
+      console.error('Error updating profile picture:', error);
+      alert('There was an error updating your profile picture. Please try again.');
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="max-w-4xl mx-auto p-6 space-y-8">
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center space-x-4">
-            <Avatar className="w-24 h-24">
-              <AvatarImage src={user?.imageUrl} alt={user?.fullName || "User"} />
-              <AvatarFallback>{user?.firstName?.[0]}{user?.lastName?.[0]}</AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="w-24 h-24">
+                <AvatarImage src={avatarFile ? URL.createObjectURL(avatarFile) : user?.imageUrl} alt={user?.fullName || "User"} />
+                <AvatarFallback>{user?.firstName?.[0]}{user?.lastName?.[0]}</AvatarFallback>
+              </Avatar>
+              <Button
+                type="button"
+                size="icon"
+                className="absolute bottom-0 right-0 rounded-full"
+                onClick={() => avatarInputRef.current?.click()}
+              >
+                <Camera className="h-4 w-4" />
+              </Button>
+              <Input
+                type="file"
+                ref={avatarInputRef}
+                className="hidden"
+                onChange={handleAvatarChange}
+                accept="image/*"
+              />
+            </div>
             <div>
               <h1 className="text-2xl font-bold">{user?.fullName}</h1>
               <p className="text-gray-500">{profile.email}</p>
+              {avatarFile && (
+                <Button type="button" onClick={handleAvatarUpload} className="mt-2">
+                  Update Profile Picture
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>
