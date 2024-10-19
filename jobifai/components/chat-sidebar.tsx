@@ -1,6 +1,6 @@
 import React, { useState } from 'react'; // Import useState
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'; // Import icons for toggling
+import { PlusCircle, Trash2, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react'; // Import icons for toggling
 import { useRouter } from 'next/navigation';
 
 type ChatHistory = {
@@ -46,30 +46,35 @@ export function ChatSidebar({ chats, activeChat, onSelectChat, onNewChat, onDele
   };
 
   return (
-    <div className={`flex ${isOpen ? 'w-64' : 'w-16'} bg-gray-100 h-screen flex-col transition-width duration-300`}>
-      <div className="flex flex-col items-center justify-center p-4"> {/* Center the button */}
-        <Button onClick={toggleSidebar} className="mb-4">
-          {isOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />} {/* Toggle icon */}
+    <div className={`flex ${isOpen ? 'w-72' : 'w-16'} bg-gray-50 h-screen flex-col transition-all duration-300 border-r border-gray-200`}>
+      <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        {isOpen && <h2 className="text-lg font-semibold">Chats</h2>}
+        <Button onClick={toggleSidebar} variant="ghost" size="icon" className="ml-auto">
+          {isOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
         </Button>
-        {isOpen && ( // Only show the new chat button when the sidebar is open
-          <Button onClick={() => onNewChat({ id: '', title: '', timestamp: new Date().toISOString(), bucket_path: 'chat_page', user_id: '' })} className="w-full mb-4">
-            <PlusCircle className="mr-2 h-4 w-4" /> New Chat
-          </Button>
-        )}
       </div>
-      {isOpen && ( // Only show the chat list when the sidebar is open
-        <div className="flex-grow overflow-y-auto overflow-x-hidden">
+      {isOpen && (
+        <Button 
+          onClick={() => onNewChat({ id: '', title: '', timestamp: new Date().toISOString(), bucket_path: 'chat_page', user_id: '' })} 
+          className="m-4 bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          <PlusCircle className="mr-2 h-4 w-4" /> New Chat
+        </Button>
+      )}
+      {isOpen && (
+        <div className="flex-grow overflow-y-auto overflow-x-hidden px-2">
           {sortedChats.map((chat) => (
             <div 
               key={chat.id} 
-              className={`flex items-center p-2 hover:bg-gray-200 cursor-pointer ${activeChat === chat.id ? 'bg-gray-200' : ''}`}
+              className={`flex items-center p-2 my-1 rounded-lg hover:bg-gray-200 cursor-pointer ${activeChat === chat.id ? 'bg-gray-200' : ''}`}
             >
               <Button
                 onClick={() => onSelectChat(chat.id)}
                 variant="ghost"
                 className="flex-grow h-auto py-2 px-3 justify-start text-left"
               >
-                <div className="w-[150px] overflow-hidden"> {/* Set a fixed width for the title */}
+                <MessageSquare className="h-4 w-4 mr-3 text-gray-500" />
+                <div className="flex-grow overflow-hidden">
                   <div className="text-sm font-medium truncate">
                     {truncateTitle(chat.title)}
                   </div>
@@ -85,7 +90,7 @@ export function ChatSidebar({ chats, activeChat, onSelectChat, onNewChat, onDele
                 }}
                 variant="ghost"
                 size="icon"
-                className="flex-shrink-0 h-8 w-8 ml-2"
+                className="flex-shrink-0 h-8 w-8 ml-2 text-gray-500 hover:text-red-500"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

@@ -414,7 +414,7 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
               <span>Add New Job</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="max-w-[1800px] w-[98vw]">
             <DialogHeader>
               <DialogTitle>Add New Job Application</DialogTitle>
             </DialogHeader>
