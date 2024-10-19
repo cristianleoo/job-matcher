@@ -7,7 +7,7 @@ import { useUserStore } from '@/lib/userStore';
 import { AddJobForm } from './add-job-form';
 import React from 'react';
 import { ResumeEditor } from './resume-editor';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { EyeIcon, PencilSquareIcon, TrashIcon, AcademicCapIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
@@ -198,8 +198,12 @@ export function ApplicationTracker() {
 
   const extractJobInfo = async (input: string, type: 'url' | 'content') => {
     setIsLoading(true);
-    setIsDialogOpen(false); // Close the dialog
+    setIsDialogOpen(false);
+    // Reset states at the beginning of extraction
     setShowJobForm(false);
+    setExtractedJobInfo(null);
+    setShowParsedContent(true);
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -254,11 +258,13 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
         console.log('Parsed extractedInfo:', extractedInfo);
         setExtractedJobInfo(extractedInfo);
         setShowJobForm(true);
+        setShowParsedContent(true);
       } catch (parseError) {
         console.error('Error parsing response:', parseError);
         // If parsing fails, show the form with empty fields for manual input
         setExtractedJobInfo(null);
         setShowJobForm(true);
+        setShowParsedContent(false);
       }
     } catch (error) {
       console.error('Error extracting job information:', error);
@@ -266,6 +272,7 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
       alert(`Failed to extract job information: ${errorMessage}`);
       setExtractedJobInfo(null);
       setShowJobForm(true);
+      setShowParsedContent(false);
     } finally {
       setIsLoading(false);
     }
@@ -411,6 +418,7 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
     setJobContent('');
     setExtractedJobInfo(null);
     setShowJobForm(false);
+    setJobUrl(''); // Also clear the URL input
   };
 
   return (
@@ -469,32 +477,44 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
         </Dialog>
       </div>
 
-      {showJobForm && extractedJobInfo && showParsedContent && (
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Add Job Application</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AddJobForm onJobAdded={handleJobAdded} extractedJobInfo={extractedJobInfo} />
-            <Button onClick={handleClearExtraction} className="mt-4">
-              Clear Extraction
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      <AnimatePresence>
+        {showJobForm && extractedJobInfo && showParsedContent && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Card className="mb-8 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-2xl font-bold">Add Job Application</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AddJobForm onJobAdded={handleJobAdded} extractedJobInfo={extractedJobInfo} />
+                <Button onClick={handleClearExtraction} className="mt-4 bg-red-500 hover:bg-red-600 text-white">
+                  Clear Extraction
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {showSuccessMessage && (
-        <motion.div
-          initial={{ opacity: 0, y: -50 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -50 }}
-          className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4"
-          role="alert"
-        >
-          <strong className="font-bold">Success!</strong>
-          <span className="block sm:inline"> Job added successfully.</span>
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {showSuccessMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            transition={{ duration: 0.3 }}
+            className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-md shadow-md mb-4"
+            role="alert"
+          >
+            <p className="font-bold">Success!</p>
+            <p>Job added successfully.</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Card>
         <CardHeader>
@@ -582,14 +602,28 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
         <InterviewPreparationPlan jobId={selectedJobId} onClose={() => setShowInterviewPlan(false)} />
       )} */}
 
-      {isLoading && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg flex items-center space-x-4">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            <span className="text-lg font-semibold">Extracting job info...</span>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white p-6 rounded-lg shadow-lg flex items-center space-x-4"
+            >
+              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+              <span className="text-lg font-semibold">Extracting job info...</span>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
