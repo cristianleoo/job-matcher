@@ -421,6 +421,21 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
     setJobUrl(''); // Also clear the URL input
   };
 
+  const loadingCircleVariants = {
+    start: {
+      y: "0%"
+    },
+    end: {
+      y: "100%"
+    }
+  };
+
+  const loadingCircleTransition = {
+    duration: 0.5,
+    yoyo: Infinity,
+    ease: "easeInOut"
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-8">
@@ -483,15 +498,18 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
           >
-            <Card className="mb-8 shadow-lg">
+            <Card className="mb-8 shadow-lg border-t-4 border-blue-500">
               <CardHeader>
-                <CardTitle className="text-2xl font-bold">Add Job Application</CardTitle>
+                <CardTitle className="text-2xl font-bold text-blue-700">Add Job Application</CardTitle>
               </CardHeader>
               <CardContent>
                 <AddJobForm onJobAdded={handleJobAdded} extractedJobInfo={extractedJobInfo} />
-                <Button onClick={handleClearExtraction} className="mt-4 bg-red-500 hover:bg-red-600 text-white">
+                <Button 
+                  onClick={handleClearExtraction} 
+                  className="mt-4 bg-red-500 hover:bg-red-600 text-white transition-colors duration-300"
+                >
                   Clear Extraction
                 </Button>
               </CardContent>
@@ -506,7 +524,7 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -50 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
             className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-md shadow-md mb-4"
             role="alert"
           >
@@ -608,18 +626,39 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
           >
             <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              transition={{ duration: 0.2 }}
-              className="bg-white p-6 rounded-lg shadow-lg flex items-center space-x-4"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="bg-white p-8 rounded-lg shadow-2xl flex flex-col items-center space-y-4"
             >
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-              <span className="text-lg font-semibold">Extracting job info...</span>
+              <div className="flex space-x-2">
+                {[0, 1, 2].map((index) => (
+                  <motion.span
+                    key={index}
+                    variants={loadingCircleVariants}
+                    transition={loadingCircleTransition}
+                    animate="end"
+                    initial="start"
+                    className="w-4 h-4 bg-blue-500 rounded-full"
+                    style={{
+                      transformOrigin: "center center",
+                    }}
+                  />
+                ))}
+              </div>
+              <motion.span 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="text-lg font-semibold text-gray-700"
+              >
+                Extracting job info...
+              </motion.span>
             </motion.div>
           </motion.div>
         )}
