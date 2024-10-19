@@ -32,7 +32,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { message, supabaseUserId, context, chatId, userData, resumeContent, section, sectionContent } = await req.json();
+    const { message, supabaseUserId, context, chatId, userData, resumeContent, section, sectionContent, is_chat_page_initialized } = await req.json();
+
+    if (!is_chat_page_initialized) {
+        const is_chat_page_initialized = false;
+    }
 
     if (!supabaseUserId) {
         console.log("Supabase user ID not found in request");
@@ -44,7 +48,7 @@ export async function POST(req: NextRequest) {
         const currentChatId = chatId || uuidv4(); // Use existing chatId or create a new one
 
         console.log(`Fetching or creating chat history for chatId: ${currentChatId}`);
-        chatData = await getChatHistory(supabaseUserId, currentChatId);
+        chatData = await getChatHistory(supabaseUserId, currentChatId, is_chat_page_initialized);
         if (!chatData) {
             console.log(`No existing chat found for chatId: ${currentChatId}. Creating a new chat.`);
             chatData = { messages: [] };
@@ -120,7 +124,8 @@ export async function POST(req: NextRequest) {
 
                     // Save the updated chat history
                     const title = chatData.messages[0]?.content?.substring(0, 50) || 'New Chat';
-                    await saveChatHistory(supabaseUserId, currentChatId, title, chatData, true);
+                    console.log("Saving chat history with is_chat_page_initialized:", is_chat_page_initialized || false);
+                    await saveChatHistory(supabaseUserId, currentChatId, title, chatData, is_chat_page_initialized || false);
                 } catch (streamError) {
                     console.error('Error in stream processing:', streamError);
                     controller.error(streamError);

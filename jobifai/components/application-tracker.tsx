@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
 
 interface JobApplication {
   id?: string; // Make id optional
@@ -84,6 +85,7 @@ export function ApplicationTracker() {
   const [showInterviewPlan, setShowInterviewPlan] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [showParsedContent, setShowParsedContent] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const fetchApplications = useCallback(async () => {
     if (!supabaseUserId) return;
@@ -196,6 +198,7 @@ export function ApplicationTracker() {
 
   const extractJobInfo = async (input: string, type: 'url' | 'content') => {
     setIsLoading(true);
+    setIsDialogOpen(false); // Close the dialog
     setShowJobForm(false);
     try {
       const response = await fetch('/api/chat', {
@@ -403,13 +406,20 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
     );
   };
 
+  const handleClearExtraction = () => {
+    setShowParsedContent(false);
+    setJobContent('');
+    setExtractedJobInfo(null);
+    setShowJobForm(false);
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Job Applications</h1>
-        <Dialog>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="flex items-center space-x-2">
+            <Button className="flex items-center space-x-2" onClick={() => setIsDialogOpen(true)}>
               <PlusIcon className="h-5 w-5" />
               <span>Add New Job</span>
             </Button>
@@ -459,13 +469,16 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
         </Dialog>
       </div>
 
-      {showJobForm && extractedJobInfo && (
+      {showJobForm && extractedJobInfo && showParsedContent && (
         <Card className="mb-8">
           <CardHeader>
             <CardTitle>Add Job Application</CardTitle>
           </CardHeader>
           <CardContent>
             <AddJobForm onJobAdded={handleJobAdded} extractedJobInfo={extractedJobInfo} />
+            <Button onClick={handleClearExtraction} className="mt-4">
+              Clear Extraction
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -568,6 +581,15 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
       {/* {showInterviewPlan && selectedJobId && (
         <InterviewPreparationPlan jobId={selectedJobId} onClose={() => setShowInterviewPlan(false)} />
       )} */}
+
+      {isLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg flex items-center space-x-4">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            <span className="text-lg font-semibold">Extracting job info...</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

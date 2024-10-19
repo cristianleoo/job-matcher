@@ -12,7 +12,7 @@ export type ChatData = {
 }[];
 };
 
-export async function saveChatHistory(userId: string, chatId: string, title: string, chatData: ChatData, is_chat_page_initialized: boolean) {
+export async function saveChatHistory(userId: string, chatId: string, title: string, chatData: ChatData, is_chat_page_initialized: boolean = false) {
   const bucketPath = `public/${userId}/${chatId}.json`;
   console.log("Saving chat history to:", bucketPath);
   const { error: uploadError } = await supabase.storage
@@ -26,6 +26,8 @@ export async function saveChatHistory(userId: string, chatId: string, title: str
     console.error('Error uploading chat history:', uploadError);
     return null;
   }
+
+  console.log("is_chat_page_initialized:", is_chat_page_initialized);
 
   const { data, error: insertError } = await supabase
     .from('chat_histories')
@@ -48,15 +50,28 @@ export async function saveChatHistory(userId: string, chatId: string, title: str
   return data;
 }
 
-export async function getChatHistory(userId: string, chatId: string): Promise<ChatData | null> {
+export async function getChatHistory(userId: string, chatId: string, is_chat_page_initialized: boolean = false): Promise<ChatData | null> {
   console.log(`Fetching chat history for user ${userId} and chat ${chatId}`);
   
-  const { data, error } = await supabase
-    .from('chat_histories')
-    .select('bucket_path')
-    .eq('user_id', userId)
-    .eq('id', chatId)
-    .single();
+  
+  let data, error;
+
+  if (is_chat_page_initialized || false === false) {
+    ({ data, error } = await supabase
+      .from('chat_histories')
+      .select('bucket_path')
+      .eq('user_id', userId)
+      .eq('id', chatId)
+      .eq('is_chat_page_initialized', is_chat_page_initialized)
+      .single());
+  } else {
+    ({ data, error } = await supabase
+      .from('chat_histories')
+      .select('bucket_path')
+      .eq('user_id', userId)
+      .eq('id', chatId)
+      .single());
+  }
 
   if (error) {
     console.error('Error fetching chat history from database:', error);
@@ -90,12 +105,12 @@ export async function getChatHistory(userId: string, chatId: string): Promise<Ch
   }
 }
 
-export async function getAllChatHistories(userId: string): Promise<ChatHistory[] | null> {
+export async function getAllChatHistories(userId: string, is_chat_page_initialized: boolean = false): Promise<ChatHistory[] | null> {
   const { data, error } = await supabase
     .from('chat_histories')
     .select('id, title, timestamp, bucket_path')
     .eq('user_id', userId)
-    .eq('is_chat_page_initialized', true)
+    .eq('is_chat_page_initialized', is_chat_page_initialized)
     .order('timestamp', { ascending: false });
 
   if (error) {

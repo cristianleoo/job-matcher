@@ -105,7 +105,7 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
   useEffect(() => {
     const loadChats = async () => {
       if (supabaseUserId) {
-        const allChats = await getAllChatHistories(supabaseUserId);
+        const allChats = await getAllChatHistories(supabaseUserId, true);
         if (allChats) {
           setChats(allChats.map(chat => ({ ...chat, messages: [] })));
           if (chatId) {
