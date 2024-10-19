@@ -552,7 +552,7 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
 
       {showResumeEditor && selectedJob && userProfile && (
         <Dialog open={showResumeEditor} onOpenChange={setShowResumeEditor}>
-          <DialogContent className="max-w-4xl">
+          <DialogContent className="max-w-7xl">
             <DialogHeader>
               <DialogTitle>Edit Resume for {selectedJob.title}</DialogTitle>
             </DialogHeader>

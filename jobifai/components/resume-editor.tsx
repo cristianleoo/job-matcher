@@ -436,21 +436,20 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
   };
 
   return (
-    <div className="flex space-x-4 h-screen">
+    <div className="flex w-full h-[calc(100vh-4rem)] bg-white shadow-xl rounded-lg overflow-hidden">
       {/* Resume Preview */}
-      <div className="w-1/2 bg-white p-8 shadow-lg overflow-y-auto">
-        {/* Move similarity score to the top */}
+      <div className="w-1/2 bg-gray-50 p-6 overflow-y-auto border-r border-gray-200">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Resume-Job Posting Similarity:</h2>
+          <h2 className="text-lg font-semibold">Resume-Job Posting Similarity:</h2>
           {renderSimilarityScore(similarityScore)}
         </div>
 
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2">{resume.name}</h1>
-          <div className="flex justify-center space-x-4 text-gray-600">
-            <span className="flex items-center"><FaEnvelope className="mr-2" />{resume.email}</span>
-            <span className="flex items-center"><FaPhone className="mr-2" />{resume.phone}</span>
-            <span className="flex items-center"><FaMapMarkerAlt className="mr-2" />{resume.location}</span>
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold mb-2">{resume.name}</h1>
+          <div className="flex justify-center space-x-3 text-sm text-gray-600">
+            <span className="flex items-center"><FaEnvelope className="mr-1" />{resume.email}</span>
+            <span className="flex items-center"><FaPhone className="mr-1" />{resume.phone}</span>
+            <span className="flex items-center"><FaMapMarkerAlt className="mr-1" />{resume.location}</span>
           </div>
           <div className="flex justify-center space-x-4 mt-2 text-gray-600">
             {!hiddenSections.has('linkedin') && resume.linkedin && (
@@ -529,7 +528,7 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
 
       {/* Edit Form or Chat Interface */}
       {chatOpen ? (
-        <div className="w-1/2">
+        <div className="w-1/2 p-6">
           <ChatInterface
             onClose={() => setChatOpen(false)}
             onApply={handleApplyChanges}
@@ -540,32 +539,37 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
           />
         </div>
       ) : (
-        <div className="w-1/2 space-y-4 overflow-y-auto pb-20 max-h-screen">
+        <div className="w-1/2 space-y-4 overflow-y-auto p-6">
           <Input
             value={resume.name}
             onChange={(e) => handleInputChange('name', e.target.value)}
             placeholder="Full Name"
+            className="text-base"
           />
           <Input
             value={resume.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
             placeholder="Email"
+            className="text-base"
           />
           <Input
             value={resume.phone}
             onChange={(e) => handleInputChange('phone', e.target.value)}
             placeholder="Phone"
+            className="text-base"
           />
           <Input
             value={resume.location}
             onChange={(e) => handleInputChange('location', e.target.value)}
             placeholder="Location"
+            className="text-base"
           />
           <div className="flex items-center space-x-2">
             <Input
               value={resume.linkedin}
               onChange={(e) => handleInputChange('linkedin', e.target.value)}
               placeholder="LinkedIn URL"
+              className="text-base"
             />
             <Button onClick={() => toggleSection('linkedin')} className="bg-blue-500 hover:bg-blue-600 text-white">
               {hiddenSections.has('linkedin') ? 'Show' : 'Hide'}
@@ -577,6 +581,7 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
               value={resume.portfolio}
               onChange={(e) => handleInputChange('portfolio', e.target.value)}
               placeholder="Portfolio URL"
+              className="text-base"
             />
             <Button onClick={() => toggleSection('portfolio')} className="bg-blue-500 hover:bg-blue-600 text-white">
               {hiddenSections.has('portfolio') ? 'Show' : 'Hide'}
@@ -584,7 +589,7 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
           </div>
 
           <div className="flex items-center space-x-2">
-            <h3 className="text-xl font-semibold">Professional Summary</h3>
+            <h3 className="text-lg font-semibold">Professional Summary</h3>
             <Button onClick={() => toggleSection('summary')} className="bg-blue-500 hover:bg-blue-600 text-white">
               {hiddenSections.has('summary') ? 'Show' : 'Hide'}
             </Button>
@@ -603,10 +608,11 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
             onChange={(e) => handleInputChange('summary', e.target.value)}
             placeholder="Professional Summary"
             rows={4}
+            className="text-base"
           />
 
           <div className="flex items-center space-x-2">
-            <h3 className="text-xl font-semibold">Skills</h3>
+            <h3 className="text-lg font-semibold">Skills</h3>
             <Button onClick={() => toggleSection('skills')} className="bg-blue-500 hover:bg-blue-600 text-white">
               {hiddenSections.has('skills') ? 'Show' : 'Hide'}
             </Button>
@@ -630,6 +636,7 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
                     newSkills[index] = e.target.value;
                     handleInputChange('skills', newSkills);
                   }}
+                  className="text-base"
                 />
                 <Button onClick={() => deleteSkill(index)} className="bg-red-500 hover:bg-red-600 text-white">
                   <FaTrash />
@@ -641,56 +648,52 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
             </Button>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <h3 className="text-xl font-semibold">Experience</h3>
-            <Button onClick={() => regenerateSection('experience')} className="bg-green-500 hover:bg-green-600 text-white">
-              Regenerate
-            </Button>
-            <Button
-              onClick={() => handleCustomRegenerate('experience')}
-              className="bg-yellow-500 hover:bg-yellow-600 text-white"
-            >
-              Custom Regenerate
-            </Button>
-          </div>
-          {resume.experience.map((exp, index) => (
-            <div key={index} className="space-y-2 border p-4 rounded">
-              <Input
-                value={exp.position}
-                onChange={(e) => handleExperienceChange(index, 'position', e.target.value)}
-                placeholder="Position"
-              />
-              <Input
-                value={exp.company}
-                onChange={(e) => handleExperienceChange(index, 'company', e.target.value)}
-                placeholder="Company"
-              />
-              <div className="flex space-x-2">
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold">Experience</h3>
+            {resume.experience.map((exp, index) => (
+              <div key={index} className="space-y-2 border p-4 rounded-lg bg-gray-50">
                 <Input
-                  value={exp.startDate}
-                  onChange={(e) => handleExperienceChange(index, 'startDate', e.target.value)}
-                  placeholder="Start Date"
+                  value={exp.position}
+                  onChange={(e) => handleExperienceChange(index, 'position', e.target.value)}
+                  placeholder="Position"
+                  className="text-base"
                 />
                 <Input
-                  value={exp.endDate}
-                  onChange={(e) => handleExperienceChange(index, 'endDate', e.target.value)}
-                  placeholder="End Date"
+                  value={exp.company}
+                  onChange={(e) => handleExperienceChange(index, 'company', e.target.value)}
+                  placeholder="Company"
+                  className="text-base"
                 />
+                <div className="flex space-x-2">
+                  <Input
+                    value={exp.startDate}
+                    onChange={(e) => handleExperienceChange(index, 'startDate', e.target.value)}
+                    placeholder="Start Date"
+                    className="text-base"
+                  />
+                  <Input
+                    value={exp.endDate}
+                    onChange={(e) => handleExperienceChange(index, 'endDate', e.target.value)}
+                    placeholder="End Date"
+                    className="text-base"
+                  />
+                </div>
+                <Textarea
+                  value={exp.description.map(item => `• ${item.replace(/^[•-]\s*/, '')}`).join('\n')}
+                  onChange={(e) => handleExperienceChange(index, 'description', e.target.value)}
+                  placeholder="Description (one bullet point per line)"
+                  rows={5}
+                  className="text-base"
+                />
+                <Button onClick={() => deleteExperience(index)} className="bg-red-500 hover:bg-red-600 text-white">
+                  <FaTrash className="mr-2" /> Delete Experience
+                </Button>
               </div>
-              <Textarea
-                value={exp.description.map(item => `• ${item.replace(/^[•-]\s*/, '')}`).join('\n')}
-                onChange={(e) => handleExperienceChange(index, 'description', e.target.value)}
-                placeholder="Description (one bullet point per line)"
-                rows={5}
-              />
-              <Button onClick={() => deleteExperience(index)} className="bg-red-500 hover:bg-red-600 text-white">
-                <FaTrash className="mr-2" /> Delete Experience
-              </Button>
-            </div>
-          ))}
+            ))}
+          </div>
 
           <div className="flex items-center space-x-2">
-            <h3 className="text-xl font-semibold">Education</h3>
+            <h3 className="text-lg font-semibold">Education</h3>
             <Button onClick={() => regenerateSection('education')} className="bg-green-500 hover:bg-green-600 text-white">
               Regenerate
             </Button>
@@ -725,7 +728,7 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
           ))}
 
           <div className="flex items-center space-x-2">
-            <h3 className="text-xl font-semibold">Projects</h3>
+            <h3 className="text-lg font-semibold">Projects</h3>
             <Button onClick={() => toggleSection('projects')} className="bg-blue-500 hover:bg-blue-600 text-white">
               {hiddenSections.has('projects') ? 'Show' : 'Hide'}
             </Button>
@@ -760,9 +763,13 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
             Add Project
           </Button>
 
-          <div className="flex space-x-4 justify-center mt-6">
-            <Button onClick={handleSave} className="bg-blue-500 hover:bg-blue-600 text-white">Save Resume</Button>
-            <Button onClick={() => window.print()} className="bg-green-500 hover:bg-green-600 text-white">Print / Save as PDF</Button>
+          <div className="flex space-x-4 justify-center mt-8">
+            <Button onClick={handleSave} className="bg-blue-500 hover:bg-blue-600 text-white text-lg px-6 py-3">
+              Save Resume
+            </Button>
+            <Button onClick={() => window.print()} className="bg-green-500 hover:bg-green-600 text-white text-lg px-6 py-3">
+              Print / Save as PDF
+            </Button>
           </div>
 
           <div className="mt-4 bg-gray-100 p-4 rounded-lg">
