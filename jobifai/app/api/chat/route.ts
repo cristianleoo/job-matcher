@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
 
                     // Save the updated chat history
                     const title = chatData.messages[0]?.content?.substring(0, 50) || 'New Chat';
-                    await saveChatHistory(supabaseUserId, currentChatId, title, chatData);
+                    await saveChatHistory(supabaseUserId, currentChatId, title, chatData, true);
                 } catch (streamError) {
                     console.error('Error in stream processing:', streamError);
                     controller.error(streamError);

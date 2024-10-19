@@ -31,10 +31,11 @@ const supabase = createClient(
 interface Chat {
   id: string;
   title: string;
-  messages: Message[]; // Change this line
+  messages: Message[];
   timestamp?: string;
   bucket_path?: string;
   user_id?: string;
+  is_chat_page_initialized?: boolean; // Add this line
 }
 
 type Message = {
@@ -129,7 +130,8 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
     const initialChat: Chat = {
       id: uuidv4(),
       title: "New Chat",
-      messages: [{ role: "assistant", content: "Hello! How can I assist you with your job search today?", id: uuidv4() }]
+      messages: [{ role: "assistant", content: "Hello! How can I assist you with your job search today?", id: uuidv4() }],
+      is_chat_page_initialized: true
     };
     setChats([initialChat]);
     setActiveChat(initialChat.id);
@@ -232,7 +234,8 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
     const newChat: Chat = {
       id: uuidv4(),
       title: "New Chat",
-      messages: [{ role: "assistant", content: "Hello! How can I assist you with your job search today?", id: uuidv4() }]
+      messages: [{ role: "assistant", content: "Hello! How can I assist you with your job search today?", id: uuidv4() }],
+      is_chat_page_initialized: true
     };
     setChats(prevChats => [...prevChats, newChat]);
     setActiveChat(newChat.id);

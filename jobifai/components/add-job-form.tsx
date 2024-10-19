@@ -55,10 +55,10 @@ export function AddJobForm({ onJobAdded, extractedJobInfo }: AddJobFormProps) {
     e.preventDefault();
     
     // Validate job_url if provided
-    if (jobData.job_url && !isValidUrl(jobData.job_url)) {
-      alert("Please enter a valid URL or leave it empty.");
-      return;
-    }
+    // if (jobData.job_url && !isValidUrl(jobData.job_url)) {
+    //   alert("Please enter a valid URL or leave it empty.");
+    //   return;
+    // }
 
     onJobAdded(jobData);
   };

@@ -12,7 +12,7 @@ export type ChatData = {
 }[];
 };
 
-export async function saveChatHistory(userId: string, chatId: string, title: string, chatData: ChatData) {
+export async function saveChatHistory(userId: string, chatId: string, title: string, chatData: ChatData, is_chat_page_initialized: boolean) {
   const bucketPath = `public/${userId}/${chatId}.json`;
   console.log("Saving chat history to:", bucketPath);
   const { error: uploadError } = await supabase.storage
@@ -35,6 +35,7 @@ export async function saveChatHistory(userId: string, chatId: string, title: str
       title: title,
       bucket_path: bucketPath,
       timestamp: new Date().toISOString(),
+      is_chat_page_initialized: is_chat_page_initialized || false
     })
     .select()
     .single();
@@ -94,6 +95,7 @@ export async function getAllChatHistories(userId: string): Promise<ChatHistory[]
     .from('chat_histories')
     .select('id, title, timestamp, bucket_path')
     .eq('user_id', userId)
+    .eq('is_chat_page_initialized', true)
     .order('timestamp', { ascending: false });
 
   if (error) {
