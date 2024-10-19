@@ -5,7 +5,7 @@ import { useUser, useAuth } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, MinusCircle, Upload, X, MessageSquare, Download, Camera } from 'lucide-react';
+import { PlusCircle, MinusCircle, Upload, X, MessageSquare, Download, Camera, Edit2 } from 'lucide-react';
 import { useUserStore } from '@/lib/userStore';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
@@ -519,19 +519,25 @@ export function UserProfileForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-4xl mx-auto p-6 space-y-8">
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center space-x-4">
+    <div className="max-w-4xl mx-auto p-6 space-y-8">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
+        <Button type="submit" className="px-6">Save Changes</Button>
+      </div>
+
+      <Card className="overflow-hidden">
+        <div className="relative h-32 bg-gradient-to-r from-blue-500 to-purple-500"></div>
+        <CardContent className="-mt-16 relative z-10">
+          <div className="flex flex-col sm:flex-row items-center sm:items-end sm:space-x-5">
             <div className="relative">
-              <Avatar className="w-24 h-24">
+              <Avatar className="w-32 h-32 border-4 border-white">
                 <AvatarImage src={avatarFile ? URL.createObjectURL(avatarFile) : user?.imageUrl} alt={user?.fullName || "User"} />
                 <AvatarFallback>{user?.firstName?.[0]}{user?.lastName?.[0]}</AvatarFallback>
               </Avatar>
               <Button
                 type="button"
                 size="icon"
-                className="absolute bottom-0 right-0 rounded-full"
+                className="absolute bottom-0 right-0 rounded-full bg-white text-gray-700 shadow-lg"
                 onClick={() => avatarInputRef.current?.click()}
               >
                 <Camera className="h-4 w-4" />
@@ -544,11 +550,11 @@ export function UserProfileForm() {
                 accept="image/*"
               />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold">{user?.fullName}</h1>
+            <div className="mt-4 sm:mt-0 text-center sm:text-left">
+              <h2 className="text-2xl font-semibold">{user?.fullName}</h2>
               <p className="text-gray-500">{profile.email}</p>
               {avatarFile && (
-                <Button type="button" onClick={handleAvatarUpload} className="mt-2">
+                <Button type="button" onClick={handleAvatarUpload} className="mt-2" variant="outline">
                   Update Profile Picture
                 </Button>
               )}
@@ -566,37 +572,41 @@ export function UserProfileForm() {
           <TabsTrigger value="resume">Resume</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="personal">
+        <TabsContent value="personal" className="mt-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" name="firstName" value={profile.firstName} readOnly />
+                  <Label htmlFor="firstName" className="text-sm font-medium text-gray-700">First Name</Label>
+                  <Input id="firstName" name="firstName" value={profile.firstName} readOnly className="mt-1" />
                 </div>
                 <div>
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" name="lastName" value={profile.lastName} readOnly />
+                  <Label htmlFor="lastName" className="text-sm font-medium text-gray-700">Last Name</Label>
+                  <Input id="lastName" name="lastName" value={profile.lastName} readOnly className="mt-1" />
                 </div>
                 <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" name="email" type="email" value={profile.email} readOnly />
+                  <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
+                  <Input id="email" name="email" type="email" value={profile.email} readOnly className="mt-1" />
                 </div>
                 <div>
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input id="phone" name="phone" type="tel" value={profile.phone} onChange={handleChange} />
+                  <Label htmlFor="phone" className="text-sm font-medium text-gray-700">Phone</Label>
+                  <Input id="phone" name="phone" type="tel" value={profile.phone} onChange={handleChange} className="mt-1" />
                 </div>
-                <div>
-                  <Label htmlFor="location">Location</Label>
-                  <Input id="location" name="location" value={profile.location} onChange={handleChange} />
+                <div className="md:col-span-2">
+                  <Label htmlFor="location" className="text-sm font-medium text-gray-700">Location</Label>
+                  <Input id="location" name="location" value={profile.location} onChange={handleChange} className="mt-1" />
                 </div>
-              </div>
-              <div className="mt-4">
-                <Label htmlFor="bio">Bio</Label>
-                <textarea id="bio" name="bio" value={profile.bio} onChange={handleChange} className="w-full p-2 border rounded" rows={4} />
+                <div className="md:col-span-2">
+                  <Label htmlFor="bio" className="text-sm font-medium text-gray-700">Bio</Label>
+                  <textarea 
+                    id="bio" 
+                    name="bio" 
+                    value={profile.bio} 
+                    onChange={handleChange} 
+                    className="mt-1 w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    rows={4}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -773,8 +783,6 @@ export function UserProfileForm() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      <Button type="submit" className="w-full mt-6">Update Profile</Button>
-    </form>
+    </div>
   );
 }
