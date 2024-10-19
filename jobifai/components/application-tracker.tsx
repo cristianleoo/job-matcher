@@ -10,9 +10,9 @@ import { FaLock } from 'react-icons/fa'; // Import the lock icon
 import { ResumeEditor } from './resume-editor';
 import { motion } from 'framer-motion';
 import { EyeIcon, PencilSquareIcon, TrashIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
-import { StarIcon } from '@heroicons/react/24/solid';
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
+import { calculateCosineSimilarity } from '@/lib/utils'; // Add this import
 
 interface JobApplication {
   id: string;
@@ -88,16 +88,21 @@ export function ApplicationTracker() {
         throw new Error('Failed to fetch applications');
       }
       const data = await response.json();
-      console.log('Fetched applications:', data); // Add this line for debugging
-      const dataWithScores = data.map((app: JobApplication) => ({
-        ...app,
-        similarity_score: app.similarity_score || generateRandomScore()
+      console.log('Fetched applications:', data);
+      const dataWithScores = await Promise.all(data.map(async (app: JobApplication) => {
+        const similarityScore = userProfile
+          ? await calculateCosineSimilarity(app.description, userProfile)
+          : null;
+        return {
+          ...app,
+          similarity_score: similarityScore
+        };
       }));
       setApplications(dataWithScores);
     } catch (error) {
       console.error('Error fetching applications:', error);
     }
-  }, [supabaseUserId]);
+  }, [supabaseUserId, userProfile]);
 
   useEffect(() => {
     if (isLoaded && userId && supabaseUserId) {
@@ -387,8 +392,6 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
       </div>
     );
   };
-
-  const generateRandomScore = () => Math.random();
 
   return (
     <div>
