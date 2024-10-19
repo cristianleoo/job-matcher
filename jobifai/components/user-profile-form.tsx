@@ -49,6 +49,7 @@ export function UserProfileForm() {
   const supabaseUserId = useUserStore((state) => state.supabaseUserId);
   const [existingResume, setExistingResume] = useState<string | null>(null);
   const router = useRouter();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   type ProfileField = 'workExperience' | 'education';
   type WorkExperience = { company: string; position: string; startDate: string; endDate: string; description: string };
@@ -483,10 +484,10 @@ export function UserProfileForm() {
   const handleAvatarUpload = async () => {
     if (!avatarFile || !supabaseUserId) return;
 
-    try {
+    try { 
       const fileName = `${supabaseUserId}_avatar.jpg`;
       const { error: uploadError } = await supabase.storage
-        .from('avatars')
+        .from('avatars/public')  // Make sure this bucket name is correct
         .upload(fileName, avatarFile, {
           cacheControl: '3600',
           upsert: true,
@@ -495,7 +496,7 @@ export function UserProfileForm() {
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
+        .from('avatars/public')
         .getPublicUrl(fileName);
 
       // Update the user's avatar URL in your database
@@ -518,6 +519,30 @@ export function UserProfileForm() {
     }
   };
 
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!supabaseUserId) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('avatar_url')
+          .eq('id', supabaseUserId)
+          .single();
+
+        if (error) throw error;
+
+        if (data && data.avatar_url) {
+          setAvatarUrl(data.avatar_url);
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+
+    fetchUserData();
+  }, [supabaseUserId]);
+
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       <div className="flex justify-between items-center mb-8">
@@ -531,7 +556,7 @@ export function UserProfileForm() {
           <div className="flex flex-col sm:flex-row items-center sm:items-end sm:space-x-5">
             <div className="relative">
               <Avatar className="w-32 h-32 border-4 border-white">
-                <AvatarImage src={avatarFile ? URL.createObjectURL(avatarFile) : user?.imageUrl} alt={user?.fullName || "User"} />
+                <AvatarImage src={avatarUrl || user?.imageUrl} alt={user?.fullName || "User"} />
                 <AvatarFallback>{user?.firstName?.[0]}{user?.lastName?.[0]}</AvatarFallback>
               </Avatar>
               <Button
