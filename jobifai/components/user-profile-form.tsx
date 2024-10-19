@@ -14,6 +14,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+import 'react-pdf/dist/esm/Page/TextLayer.css';
+
+// Set the worker source for react-pdf
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -50,6 +56,9 @@ export function UserProfileForm() {
   const [existingResume, setExistingResume] = useState<string | null>(null);
   const router = useRouter();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   type ProfileField = 'workExperience' | 'education';
   type WorkExperience = { company: string; position: string; startDate: string; endDate: string; description: string };
@@ -543,6 +552,30 @@ export function UserProfileForm() {
     fetchUserData();
   }, [supabaseUserId]);
 
+  useEffect(() => {
+    const fetchResume = async () => {
+      if (!supabaseUserId || !existingResume) return;
+
+      try {
+        const { data, error } = await supabase.storage
+          .from('user_resumes')
+          .createSignedUrl(`public/${supabaseUserId}_resume.pdf`, 3600); // URL valid for 1 hour
+
+        if (error) throw error;
+
+        setPdfUrl(data.signedUrl);
+      } catch (error) {
+        console.error('Error fetching resume:', error);
+      }
+    };
+
+    fetchResume();
+  }, [supabaseUserId, existingResume]);
+
+  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
+    setNumPages(numPages);
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       <div className="flex justify-between items-center mb-8">
@@ -804,6 +837,48 @@ export function UserProfileForm() {
                   </>
                 )}
               </div>
+              {pdfUrl && (
+                <div className="mt-6 flex flex-col items-center">
+                  <div className="border rounded-lg shadow-lg overflow-hidden">
+                    <Document
+                      file={pdfUrl}
+                      onLoadSuccess={onDocumentLoadSuccess}
+                      options={{
+                        cMapUrl: 'cmaps/',
+                        cMapPacked: true,
+                      }}
+                    >
+                      <Page 
+                        pageNumber={pageNumber} 
+                        width={600} // Adjust this value to fit your layout
+                        renderTextLayer={false}
+                        renderAnnotationLayer={false}
+                      />
+                    </Document>
+                  </div>
+                  <p className="text-center mt-4 text-sm text-gray-600">
+                    Page {pageNumber} of {numPages}
+                  </p>
+                  <div className="flex justify-center mt-2 gap-2">
+                    <Button
+                      onClick={() => setPageNumber(pageNumber - 1)}
+                      disabled={pageNumber <= 1}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      onClick={() => setPageNumber(pageNumber + 1)}
+                      disabled={pageNumber >= (numPages || 0)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
