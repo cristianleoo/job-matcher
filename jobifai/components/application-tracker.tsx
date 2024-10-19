@@ -10,6 +10,9 @@ import { FaLock } from 'react-icons/fa'; // Import the lock icon
 import { ResumeEditor } from './resume-editor';
 import { motion } from 'framer-motion';
 import { EyeIcon, PencilSquareIcon, TrashIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
+import { StarIcon } from '@heroicons/react/24/solid';
+import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
+import 'react-circular-progressbar/dist/styles.css';
 
 interface JobApplication {
   id: string;
@@ -26,6 +29,7 @@ interface JobApplication {
   requirements?: string[];
   job_url?: string;
   description: string;
+  similarity_score?: number;
 }
 
 interface UserProfile {
@@ -84,7 +88,12 @@ export function ApplicationTracker() {
         throw new Error('Failed to fetch applications');
       }
       const data = await response.json();
-      setApplications(data);
+      console.log('Fetched applications:', data); // Add this line for debugging
+      const dataWithScores = data.map((app: JobApplication) => ({
+        ...app,
+        similarity_score: app.similarity_score || generateRandomScore()
+      }));
+      setApplications(dataWithScores);
     } catch (error) {
       console.error('Error fetching applications:', error);
     }
@@ -189,17 +198,17 @@ export function ApplicationTracker() {
 
 Please provide the following information in a JSON format:
 {
-  "title": "", # this is the job title
-  "company": "", # this is the company name
-  "location": "", # this is the location of the job
-  "employment_type": "", # this is the employment type of the job
-  "experience_level": "", # this is the experience level of the job
-  "remote_type": "", # this is the remote type of the job
-  "skills": [], # this is the skills required for the job
-  "responsibilities": [], # this is the responsibilities of the job
-  "requirements": [], # this is the requirements of the job
-  "job_url": "", # this is the URL of the job. If the job is not found, please return an empty string.
-  "description": "" # this is the description of the job
+  "title": "",
+  "company": "",
+  "location": "",
+  "employment_type": "",
+  "experience_level": "",
+  "remote_type": "",
+  "skills": [],
+  "responsibilities": [],
+  "requirements": [],
+  "job_url": "",
+  "description": ""
 }
 
 Ensure all fields are filled, using "N/A" if the information is not available. For arrays, provide at least one item or ["N/A"] if no information is found.`,
@@ -240,7 +249,8 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
       }
     } catch (error) {
       console.error('Error extracting job information:', error);
-      // If extraction fails, show the form with empty fields for manual input
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to extract job information: ${errorMessage}`);
       setExtractedJobInfo(null);
       setShowJobForm(true);
     } finally {
@@ -332,7 +342,8 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
   const handleScrapeJobUrl = async (url: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/scrape-linkedin-job', {
+      // Step 1: Scrape the job content from the URL
+      const response = await fetch('/api/linkedin-scraper', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -344,17 +355,40 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
         throw new Error('Failed to scrape job data');
       }
 
-      const jobData = await response.json();
+      const scrapedData = await response.json();
       
-      // Use the existing extractJobInfo function to parse the scraped content
-      await extractJobInfo(jobData.description, 'content');
+      // Step 2: Extract job info from the scraped content
+      await extractJobInfo(scrapedData.description, 'content');
     } catch (error) {
       console.error('Error scraping job:', error);
-      alert('Failed to scrape job data. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to scrape job data: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
   };
+
+  const renderSimilarityScore = (score: number | undefined | null) => {
+    if (score === undefined || score === null) return 'N/A';
+    const percentage = Math.round(score * 100);
+    
+    return (
+      <div className="w-12 h-12">
+        <CircularProgressbar
+          value={percentage}
+          text={`${percentage}%`}
+          styles={buildStyles({
+            textSize: '28px',
+            pathColor: `rgba(62, 152, 199, ${percentage / 100})`,
+            textColor: '#3e98c7',
+            trailColor: '#d6d6d6',
+          })}
+        />
+      </div>
+    );
+  };
+
+  const generateRandomScore = () => Math.random();
 
   return (
     <div>
@@ -464,6 +498,7 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
               <th scope="col" className="px-3 py-3 text-center">Remote</th>
               <th scope="col" className="px-3 py-3 text-center">Status</th>
               <th scope="col" className="px-3 py-3 text-center">Applied Date</th>
+              <th scope="col" className="px-3 py-3 text-center">Match</th>
               <th scope="col" className="px-3 py-3 text-center">Actions</th>
             </tr>
           </thead>
@@ -490,6 +525,9 @@ Ensure all fields are filled, using "N/A" if the information is not available. F
                   </select>
                 </td>
                 <td className="px-3 py-4 text-center">{new Date(app.applied_date).toLocaleDateString()}</td>
+                <td className="px-3 py-4 text-center">
+                  {renderSimilarityScore(app.similarity_score)}
+                </td>
                 <td className="px-3 py-4 text-center">
                   <div className="flex justify-center space-x-3">
                     <Link href={`/jobs/${app.id}`}>

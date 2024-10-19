@@ -1,4 +1,6 @@
 import { Browser, Page } from 'puppeteer';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 
 interface Job {
   id: string;
@@ -8,7 +10,8 @@ interface Job {
   url: string;
   remoteOk: boolean;
   date: string;
-  descriptionHtml?: string;
+  descriptionHtml?: string | null;
+  descriptionText?: string | null;
   salaryMin?: number;
   salaryMax?: number;
   salaryCurrency?: string;
@@ -115,5 +118,88 @@ export async function getJobsFromLinkedin(browser: Browser, keyword: string, loc
     return jobs;
   } finally {
     await page.close();
+  }
+}
+
+export async function scrapeJobDetails(browser: Browser, url: string): Promise<Partial<Job>> {
+  console.log('Starting job details scraping');
+  console.log('Fetching job details page:', url);
+  let retries = 3;
+
+  while (retries > 0) {
+    try {
+      // Fetch the HTML content using axios
+      const response = await axios.get(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+      });
+
+      const $ = cheerio.load(response.data);
+      const descriptionElement = $('.show-more-less-html__markup');
+
+      if (descriptionElement.length > 0) {
+        const descriptionHtml = descriptionElement.html();
+        const descriptionText = descriptionElement.text();
+
+        console.log('Scraped job details successfully');
+        return {
+          url,
+          descriptionHtml: descriptionHtml || undefined,
+          descriptionText: descriptionText || undefined,
+        };
+      } else {
+        console.log('Description element not found in HTML. Falling back to Puppeteer.');
+        return await scrapeWithPuppeteer(browser, url);
+      }
+    } catch (error) {
+      console.error(`Error scraping job details (attempt ${4 - retries}/3):`, error);
+      retries--;
+      if (retries === 0) {
+        console.error('Max retries reached. Returning partial data.');
+        return { url };
+      }
+      await delay(5000 + Math.random() * 5000); // Random delay between 5-10 seconds
+    }
+  }
+
+  return { url };
+}
+
+async function scrapeWithPuppeteer(browser: Browser, url: string): Promise<Partial<Job>> {
+  let page: Page | null = null;
+  try {
+    page = await browser.newPage();
+    await page.setExtraHTTPHeaders({ 'accept-language': 'en-US,en;q=0.9' });
+    
+    await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
+
+    await page.waitForFunction(() => {
+      const element = document.querySelector('.show-more-less-html__markup');
+      return element && element.textContent && element.textContent.length > 0;
+    }, { timeout: 30000 });
+
+    const jobDetails = await page.evaluate(() => {
+      const descriptionElement = document.querySelector('.show-more-less-html__markup');
+      return {
+        descriptionHtml: descriptionElement ? descriptionElement.innerHTML : null,
+        descriptionText: descriptionElement ? descriptionElement.textContent : null
+      };
+    });
+
+    console.log('Scraped job details with Puppeteer');
+    return {
+      url,
+      descriptionHtml: jobDetails.descriptionHtml || undefined,
+      descriptionText: jobDetails.descriptionText || undefined
+    };
+  } catch (error) {
+    console.error('Error scraping with Puppeteer:', error);
+    return { url };
+  } finally {
+    if (page && !page.isClosed()) {
+      await page.close().catch(e => console.error('Error closing page:', e));
+    }
   }
 }

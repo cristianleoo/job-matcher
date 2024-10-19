@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { Experience, Education, Project } from '@/app/types';
+import { Experience, Education, Project, UserProfile } from '@/app/types';
+import { ResumeType } from '@/components/resume-editor';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -50,20 +51,17 @@ function calculateCosineSimilarity(tf1: Record<string, number>, tf2: Record<stri
   return magnitude ? dotProduct / magnitude : 0;
 }
 
-export function calculateSimilarity(resume: Resume, jobDescription: string): number {
-  const resumeText = `
-    ${resume.summary || ''}
-    ${resume.experience.map(exp => `${exp.position} ${exp.company} ${exp.description.join(' ')}`).join(' ')}
-    ${resume.education.map(edu => `${edu.degree} ${edu.institution}`).join(' ')}
-    ${resume.skills.join(' ')}
-    ${resume.projects.map(proj => `${proj.name} ${proj.description.join(' ')} ${proj.technologies.join(' ')}`).join(' ')}
-  `;
+export function calculateSimilarity(resume: ResumeType, jobDescription: string): number {
+  // Convert resume to a string
+  const resumeString = JSON.stringify(resume).toLowerCase();
+  const jobDescLower = jobDescription.toLowerCase();
 
-  const resumeTokens = tokenize(resumeText);
-  const jobTokens = tokenize(jobDescription);
+  // Count matching words
+  const resumeWords = new Set(resumeString.match(/\w+/g) || []);
+  const jobWords = new Set(jobDescLower.match(/\w+/g) || []);
+  const matchingWords = [...resumeWords].filter(word => jobWords.has(word));
 
-  const resumeTF = calculateTF(resumeTokens);
-  const jobTF = calculateTF(jobTokens);
-
-  return calculateCosineSimilarity(resumeTF, jobTF);
+  // Calculate similarity score
+  const similarity = matchingWords.length / jobWords.size;
+  return Math.min(similarity, 1); // Ensure the score is between 0 and 1
 }

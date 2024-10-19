@@ -11,6 +11,8 @@ import axios from 'axios';
 import { calculateSimilarity } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { ChatInterface } from '@/components/ChatInterface';
+import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
+import 'react-circular-progressbar/dist/styles.css';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
@@ -415,10 +417,34 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
     setChatOpen(false);
   };
 
+  const renderSimilarityScore = (score: number) => {
+    const percentage = Math.round(score * 100);
+    return (
+      <div className="w-20 h-20">
+        <CircularProgressbar
+          value={percentage}
+          text={`${percentage}%`}
+          styles={buildStyles({
+            textSize: '28px',
+            pathColor: `rgba(62, 152, 199, ${percentage / 100})`,
+            textColor: '#3e98c7',
+            trailColor: '#d6d6d6',
+          })}
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="flex space-x-4 h-screen">
       {/* Resume Preview */}
       <div className="w-1/2 bg-white p-8 shadow-lg overflow-y-auto">
+        {/* Move similarity score to the top */}
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Resume-Job Posting Similarity:</h2>
+          {renderSimilarityScore(similarityScore)}
+        </div>
+
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-2">{resume.name}</h1>
           <div className="flex justify-center space-x-4 text-gray-600">
@@ -499,17 +525,6 @@ export function ResumeEditor({ jobDescription, userProfile, onSave }: ResumeEdit
             ))}
           </section>
         )}
-
-        {/* Add this section for the similarity score */}
-        <div className="mt-6 bg-blue-100 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold mb-2">Resume-Job Posting Similarity:</h3>
-          <div className="flex items-center">
-            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mr-2">
-              <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${similarityScore * 100}%` }}></div>
-            </div>
-            <span className="text-sm font-medium text-blue-700 dark:text-white">{(similarityScore * 100).toFixed(2)}%</span>
-          </div>
-        </div>
       </div>
 
       {/* Edit Form or Chat Interface */}
