@@ -17,6 +17,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Set the worker source for react-pdf
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -576,6 +578,12 @@ export function UserProfileForm() {
     setNumPages(numPages);
   }
 
+  const handleResumeUpload = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       <div className="flex justify-between items-center mb-8">
@@ -781,104 +789,82 @@ export function UserProfileForm() {
         </TabsContent>
 
         <TabsContent value="resume">
-          <Card>
+          <Card className="bg-gradient-to-br from-purple-50 to-blue-50 shadow-xl">
             <CardHeader>
-              <CardTitle>Resume</CardTitle>
+              <CardTitle className="text-2xl font-bold text-gray-800">Your Resume</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-2 mt-2">
-                <Input
-                  id="resume"
-                  type="file"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  ref={fileInputRef}
-                  accept=".pdf,.doc,.docx"
-                />
+              <div className="flex items-center justify-center gap-4 mt-4">
                 <Button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2"
+                  onClick={handleResumeUpload}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  <Upload className="h-4 w-4" />
-                  {existingResume ? 'Update Resume' : 'Upload Resume'}
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Resume
                 </Button>
-                {(resume || existingResume) && (
-                  <div className="flex items-center gap-2">
-                    <span>Resume loaded successfully</span>
-                    <Button
-                      type="button"
-                      onClick={handleRemoveFile}
-                      size="icon"
-                      variant="destructive"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
                 {existingResume && (
-                  <>
-                    <Button
-                      type="button"
-                      onClick={handleDownloadResume}
-                      className="flex items-center gap-2"
-                    >
-                      <Download className="h-4 w-4" />
-                      Download Resume
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={handleChatWithResume}
-                      className="flex items-center gap-2"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                      Chat with Resume
-                    </Button>
-                  </>
+                  <Button
+                    onClick={handleDownloadResume}
+                    variant="outline"
+                    className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download Resume
+                  </Button>
                 )}
               </div>
-              {pdfUrl && (
-                <div className="mt-6 flex flex-col items-center">
-                  <div className="border rounded-lg shadow-lg overflow-hidden">
-                    <Document
-                      file={pdfUrl}
-                      onLoadSuccess={onDocumentLoadSuccess}
-                      options={{
-                        cMapUrl: 'cmaps/',
-                        cMapPacked: true,
-                      }}
-                    >
-                      <Page 
-                        pageNumber={pageNumber} 
-                        width={600} // Adjust this value to fit your layout
-                        renderTextLayer={false}
-                        renderAnnotationLayer={false}
-                      />
-                    </Document>
-                  </div>
-                  <p className="text-center mt-4 text-sm text-gray-600">
-                    Page {pageNumber} of {numPages}
-                  </p>
-                  <div className="flex justify-center mt-2 gap-2">
-                    <Button
-                      onClick={() => setPageNumber(pageNumber - 1)}
-                      disabled={pageNumber <= 1}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      onClick={() => setPageNumber(pageNumber + 1)}
-                      disabled={pageNumber >= (numPages || 0)}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <AnimatePresence mode="wait">
+                {pdfUrl && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.5 }}
+                    className="mt-8 flex flex-col items-center"
+                  >
+                    <div className="bg-white rounded-lg shadow-2xl overflow-hidden">
+                      <Document
+                        file={pdfUrl}
+                        onLoadSuccess={onDocumentLoadSuccess}
+                        options={{
+                          cMapUrl: 'cmaps/',
+                          cMapPacked: true,
+                        }}
+                      >
+                        <Page 
+                          pageNumber={pageNumber} 
+                          width={Math.min(600, window.innerWidth - 64)}
+                          renderTextLayer={false}
+                          renderAnnotationLayer={false}
+                        />
+                      </Document>
+                    </div>
+                    <p className="text-center mt-4 text-sm text-gray-600">
+                      Page {pageNumber} of {numPages}
+                    </p>
+                    <div className="flex justify-center mt-4 gap-4">
+                      <Button
+                        onClick={() => setPageNumber(pageNumber - 1)}
+                        disabled={pageNumber <= 1}
+                        variant="outline"
+                        size="icon"
+                        className="rounded-full"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        onClick={() => setPageNumber(pageNumber + 1)}
+                        disabled={pageNumber >= (numPages || 0)}
+                        variant="outline"
+                        size="icon"
+                        className="rounded-full"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </CardContent>
           </Card>
         </TabsContent>

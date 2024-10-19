@@ -1,9 +1,9 @@
 "use client";
 
+import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useUserStore } from '@/lib/userStore';
-import Link from 'next/link';
 
 interface JobDetails {
   id: string;
@@ -18,6 +18,7 @@ interface JobDetails {
   skills: string[] | null;
   responsibilities: string[] | null;
   requirements: string[] | null;
+  [key: string]: string | string[] | null; // Add this line
 }
 
 export default function JobDetailsPage() {
@@ -52,82 +53,54 @@ export default function JobDetailsPage() {
   }, [supabaseUserId, id, fetchJobDetails]);
 
   if (!job) {
-    return <div>Loading...</div>;
+    return <div className="flex justify-center items-center h-screen">
+      <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
+    </div>;
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-4">{job.title}</h1>
-      <h2 className="text-xl font-semibold mb-2">{job.company}</h2>
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div>
-          <p className="font-semibold">Location:</p>
-          <p>{job.location || 'N/A'}</p>
-        </div>
-        <div>
-          <p className="font-semibold">Status:</p>
-          <p>{job.status || 'N/A'}</p>
-        </div>
-        <div>
-          <p className="font-semibold">Applied Date:</p>
-          <p>{job.applied_date ? new Date(job.applied_date).toLocaleDateString() : 'N/A'}</p>
-        </div>
-        <div>
-          <p className="font-semibold">Employment Type:</p>
-          <p>{job.employment_type || 'N/A'}</p>
-        </div>
-        <div>
-          <p className="font-semibold">Experience Level:</p>
-          <p>{job.experience_level || 'N/A'}</p>
-        </div>
-        <div>
-          <p className="font-semibold">Remote Type:</p>
-          <p>{job.remote_type || 'N/A'}</p>
-        </div>
-      </div>
-
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">Skills:</h3>
-        {job.skills && job.skills.length > 0 ? (
-          <ul className="list-disc list-inside">
-            {job.skills.map((skill, index) => (
-              <li key={index}>{skill}</li>
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+        <div className="p-6">
+          <h1 className="text-3xl font-bold mb-2">{job.title}</h1>
+          <h2 className="text-xl text-gray-600 mb-4">{job.company}</h2>
+          
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            {[
+              { label: "Location", value: job.location },
+              { label: "Status", value: job.status },
+              { label: "Applied Date", value: job.applied_date ? new Date(job.applied_date).toLocaleDateString() : 'N/A' },
+              { label: "Employment Type", value: job.employment_type },
+              { label: "Experience Level", value: job.experience_level },
+              { label: "Remote Type", value: job.remote_type },
+            ].map(({ label, value }) => (
+              <div key={label} className="bg-gray-50 p-3 rounded">
+                <p className="text-sm font-medium text-gray-500">{label}</p>
+                <p className="mt-1">{value || 'N/A'}</p>
+              </div>
             ))}
-          </ul>
-        ) : (
-          <p>No skills listed</p>
-        )}
+          </div>
+
+          {['Skills', 'Responsibilities', 'Requirements'].map((section) => (
+            <div key={section} className="mb-6">
+              <h3 className="text-lg font-semibold mb-2">{section}:</h3>
+              {job[section.toLowerCase() as keyof typeof job] && Array.isArray(job[section.toLowerCase() as keyof typeof job]) && (job[section.toLowerCase() as keyof typeof job] as string[]).length > 0 ? (
+                <ul className="list-disc list-inside space-y-1">
+                  {(job[section.toLowerCase() as keyof typeof job] as string[]).map((item, index) => (
+                    <li key={index} className="text-gray-700">{item}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500">No {section.toLowerCase()} listed</p>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">Responsibilities:</h3>
-        {job.responsibilities && job.responsibilities.length > 0 ? (
-          <ul className="list-disc list-inside">
-            {job.responsibilities.map((responsibility, index) => (
-              <li key={index}>{responsibility}</li>
-            ))}
-          </ul>
-        ) : (
-          <p>No responsibilities listed</p>
-        )}
-      </div>
-
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">Requirements:</h3>
-        {job.requirements && job.requirements.length > 0 ? (
-          <ul className="list-disc list-inside">
-            {job.requirements.map((requirement, index) => (
-              <li key={index}>{requirement}</li>
-            ))}
-          </ul>
-        ) : (
-          <p>No requirements listed</p>
-        )}
-      </div>
-
-      <div className="mt-8">
+      <div className="mt-8 text-center">
         <Link href="/applications">
-          <button className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+          <button className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-full transition duration-300 ease-in-out transform hover:-translate-y-1">
             Back to Job List
           </button>
         </Link>
