@@ -18,6 +18,7 @@ import dynamic from 'next/dynamic';
 import { Toggle } from "@/components/ui/toggle";
 import { fetchUserData } from '@/lib/userDataOperations';
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 const PDFViewer = dynamic(() => import('./PDFViewer'), { ssr: false });
 
@@ -30,15 +31,16 @@ const supabase = createClient(
 interface Chat {
   id: string;
   title: string;
-  messages: { role: string; content: string }[];
+  messages: Message[]; // Change this line
   timestamp?: string;
   bucket_path?: string;
-  user_id?: string; // Add this line to include user_id
+  user_id?: string;
 }
 
 type Message = {
   role: 'user' | 'assistant';
   content: string;
+  id: string;
 };
 
 interface AIAssistantProps {
@@ -65,6 +67,9 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const [isTyping, setIsTyping] = useState(false);
+  const [currentlyTypingId, setCurrentlyTypingId] = useState<string | null>(null);
+
   useEffect(() => {
     if (userId) {
       fetch('/api/auth', { method: 'POST' })
@@ -83,7 +88,14 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
       const chatData = await getChatHistory(supabaseUserId, chatId);
       if (chatData) {
         setChats(prevChats => prevChats.map(chat => 
-          chat.id === chatId ? { ...chat, messages: chatData.messages } : chat
+          chat.id === chatId ? {
+            ...chat,
+            messages: chatData.messages.map(msg => ({
+              role: msg.role as 'user' | 'assistant',
+              content: msg.content,
+              id: msg.id || uuidv4()
+            }))
+          } : chat
         ));
       }
     }
@@ -114,10 +126,10 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
   }, [chatId, supabaseUserId]);
 
   const createInitialChat = () => {
-    const initialChat = {
+    const initialChat: Chat = {
       id: uuidv4(),
       title: "New Chat",
-      messages: [{ role: "assistant", content: "Hello! How can I assist you with your job search today?" }]
+      messages: [{ role: "assistant", content: "Hello! How can I assist you with your job search today?", id: uuidv4() }]
     };
     setChats([initialChat]);
     setActiveChat(initialChat.id);
@@ -128,22 +140,30 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
   }, [chats]);
 
   const handleSend = async () => {
-    console.log("handleSend called", { input, isLoading, supabaseUserId, activeChat, isUserDataLoaded });
     if (input.trim() && !isLoading && supabaseUserId && activeChat) {
       setIsLoading(true);
-      const userMessage = { role: "user", content: input };
+      const userMessage: Message = { role: "user", content: input, id: uuidv4() };
+      const aiMessage: Message = { role: "assistant", content: "", id: uuidv4() };
+      
       setChats(prevChats => prevChats.map(chat => 
         chat.id === activeChat 
-          ? { ...chat, messages: [...chat.messages, userMessage] }
+          ? { ...chat, messages: [...chat.messages, userMessage, aiMessage] }
           : chat
       ));
+      
+      setCurrentlyTypingId(aiMessage.id);
       setInput("");
-      setStreamingMessage("");
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+      let timeoutId: NodeJS.Timeout | undefined;
 
       try {
+        const controller = new AbortController();
+        
+        setIsTyping(true);
+        setStreamingMessage("");
+        
+        timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: {
@@ -171,43 +191,32 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
           throw new Error('Failed to get response reader');
         }
 
-        let fullResponse = '';
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           const chunk = new TextDecoder().decode(value);
-          fullResponse += chunk;
-          setStreamingMessage(fullResponse);
-        }
-
-        console.log("Full response received:", fullResponse);
-        console.log("Updating chats with new message");
-        setChats(prevChats => {
-          const newChats = prevChats.map(chat => 
+          
+          setChats(prevChats => prevChats.map(chat => 
             chat.id === activeChat 
-              ? { ...chat, messages: [...chat.messages, { role: "assistant", content: fullResponse }] }
+              ? {
+                  ...chat,
+                  messages: chat.messages.map(msg => 
+                    'id' in msg && msg.id === aiMessage.id 
+                      ? { ...msg, content: msg.content + chunk }
+                      : msg
+                  )
+                }
               : chat
-          );
-          console.log("Updated chats:", newChats);
-          return newChats;
-        });
-        setStreamingMessage("");
-      } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') {
-          console.error('Request timed out');
-          // Handle timeout error
-        } else {
-          console.error('Error in AI chat:', error);
+          ));
         }
-        setChats(prevChats => prevChats.map(chat => 
-          chat.id === activeChat 
-            ? { ...chat, messages: [...chat.messages, { role: "assistant", content: "I'm sorry, I encountered an error. Please try again." }] }
-            : chat
-        ));
+      } catch (error) {
+        console.error('Error in AI chat:', error);
+        // Handle error...
       } finally {
         setIsLoading(false);
-        setStreamingMessage("");
-        clearTimeout(timeoutId);
+        setIsTyping(false);
+        setCurrentlyTypingId(null);
+        if (timeoutId) clearTimeout(timeoutId);
       }
     } else {
       console.log("Conditions not met", { 
@@ -220,10 +229,10 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
   };
 
   const handleNewChat = () => {
-    const newChat = {
+    const newChat: Chat = {
       id: uuidv4(),
       title: "New Chat",
-      messages: [{ role: "assistant", content: "Hello! How can I assist you with your job search today?" }]
+      messages: [{ role: "assistant", content: "Hello! How can I assist you with your job search today?", id: uuidv4() }]
     };
     setChats(prevChats => [...prevChats, newChat]);
     setActiveChat(newChat.id);
@@ -359,9 +368,9 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
             "flex-grow overflow-y-auto p-4 space-y-4",
             isUserDataLoaded ? 'max-w-[66%]' : 'w-full'
           )}>
-            {activeChat && chats.find(chat => chat.id === activeChat)?.messages.map((message, index) => (
+            {activeChat && chats.find(chat => chat.id === activeChat)?.messages.map((message: Message) => (
               <div
-                key={`${activeChat}-${index}`}
+                key={message.id}
                 className={cn(
                   "p-4 rounded-lg flex items-start shadow-sm",
                   message.role === "assistant" ? "bg-blue-50" : "bg-white"
@@ -397,46 +406,20 @@ export function AIAssistant({ chatId }: AIAssistantProps) {
                         )
                       }
                     }}
-                    className="prose max-w-none"
+                    className="prose max-w-none text-gray-800"
                   >
                     {message.content}
                   </ReactMarkdown>
+                  {currentlyTypingId === message.id && (
+                    <motion.span
+                      className="inline-block w-2 h-4 bg-blue-500 ml-1"
+                      animate={{ opacity: [1, 0] }}
+                      transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+                    />
+                  )}
                 </div>
               </div>
             ))}
-            {streamingMessage && (
-              <div className="p-2 rounded-lg bg-blue-100 flex items-start">
-                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white mr-2 flex-shrink-0">
-                  AI
-                </div>
-                <div className="flex-grow">
-                  <ReactMarkdown
-                    components={{
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      code({node, inline, className, children, ...props}: any) {
-                        const match = /language-(\w+)/.exec(className || '')
-                        return !inline && match ? (
-                          <SyntaxHighlighter
-                            {...props}
-                            style={tomorrow}
-                            language={match[1]}
-                            PreTag="div"
-                          >
-                            {String(children).replace(/\n$/, '')}
-                          </SyntaxHighlighter>
-                        ) : (
-                          <code {...props} className={className}>
-                            {children}
-                          </code>
-                        )
-                      }
-                    }}
-                  >
-                    {streamingMessage}
-                  </ReactMarkdown>
-                </div>
-              </div>
-            )}
             <div ref={messagesEndRef} />
           </div>
           {isUserDataLoaded && resumeUrl && (

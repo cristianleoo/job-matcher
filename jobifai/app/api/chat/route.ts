@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { saveChatHistory, getChatHistory } from '@/lib/chatOperations';
+import crypto from 'crypto';
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -113,8 +114,8 @@ export async function POST(req: NextRequest) {
                     const sanitizedResponse = sanitizeUnicode(fullResponse);
                     // Update chatData with new message and response
                     chatData.messages.push(
-                        { role: 'user', content: message },
-                        { role: 'assistant', content: sanitizedResponse }
+                        { id: crypto.randomUUID(), role: 'user', content: message },
+                        { id: crypto.randomUUID(), role: 'assistant', content: sanitizedResponse }
                     );
 
                     // Save the updated chat history

@@ -7,7 +7,9 @@ const supabase = createClient(
 );
 
 export type ChatData = {
-  messages: { role: string; content: string }[];
+  messages: {
+    id: string; role: string; content: string 
+}[];
 };
 
 export async function saveChatHistory(userId: string, chatId: string, title: string, chatData: ChatData) {
