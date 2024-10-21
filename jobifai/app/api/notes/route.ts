@@ -18,7 +18,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  // Ensure the id is returned as a string
+  const formattedData = data?.map(note => ({
+    ...note,
+    id: note.id.toString()
+  }));
+
+  return NextResponse.json(formattedData);
 }
 
 export async function GET(request: Request) {

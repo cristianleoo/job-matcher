@@ -11,13 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-interface Note {
-  id: number;
-  title: string;
-  content: string;
-  path: string;
-}
+import { Note } from '../types/Note';
 
 interface TreeNode {
   name: string;
@@ -28,11 +22,18 @@ interface TreeNode {
 }
 
 interface NotesListSidebarProps {
+  notes: Note[];
+  selectedNoteId: string | null;
   onNoteSelect: (note: Note) => void;
+  onNoteCreate: () => void;
 }
 
-const NotesListSidebar: React.FC<NotesListSidebarProps> = ({ onNoteSelect }) => {
-  const [notes, setNotes] = useState<Note[]>([]);
+const NotesListSidebar: React.FC<NotesListSidebarProps> = ({
+  notes,
+  selectedNoteId,
+  onNoteSelect,
+  onNoteCreate,
+}) => {
   const [treeStructure, setTreeStructure] = useState<TreeNode>({ name: '/', children: [], isFolder: true, isOpen: true });
   const supabaseUserId = useUserStore((state) => state.supabaseUserId);
   const [newItemName, setNewItemName] = useState('');
@@ -52,7 +53,6 @@ const NotesListSidebar: React.FC<NotesListSidebarProps> = ({ onNoteSelect }) => 
     const response = await fetch(`/api/notes?userId=${supabaseUserId}`);
     if (response.ok) {
       const data = await response.json();
-      setNotes(data);
       setTreeStructure(buildTreeStructure(data));
     } else {
       console.error('Error fetching notes:', await response.text());

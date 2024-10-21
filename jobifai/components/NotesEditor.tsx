@@ -6,13 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Save, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-interface Note {
-  id: number;
-  title: string;
-  content: string;
-  path: string;
-}
+import { Note } from '../types/Note';
 
 const NotesEditor: React.FC<{ selectedNote: Note | null; onBack: () => void }> = ({ selectedNote, onBack }) => {
   const [title, setTitle] = useState('');
