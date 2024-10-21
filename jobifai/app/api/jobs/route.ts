@@ -40,6 +40,7 @@ export async function POST(request: Request) {
         description: jobData.description,
         status: jobData.status,
         applied_date: jobData.applied_date,
+        original_content: jobData.original_content,
       })
       .select();
 
@@ -108,10 +109,10 @@ export async function DELETE(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const { jobId, jobStatus, supabaseUserId } = await request.json();
+  const { jobId, jobStatus, supabaseUserId, original_content } = await request.json();
 
   // Log the incoming request data
-  console.log('Incoming PATCH request data:', { jobId, jobStatus, supabaseUserId });
+  console.log('Incoming PATCH request data:', { jobId, jobStatus, supabaseUserId, original_content });
 
   // Validate required fields
   if (!jobId || !jobStatus || !supabaseUserId) {
@@ -121,7 +122,7 @@ export async function PATCH(request: Request) {
   try {
     const { data, error } = await supabase
       .from('job_applications')
-      .update({ status: String(jobStatus) }) // Ensure this matches the actual column name in your database
+      .update({ status: String(jobStatus), original_content: original_content }) // Ensure this matches the actual column name in your database
       .eq('id', jobId) // Use 'id' here, not 'jobId'
       .eq('user_id', supabaseUserId)
       .select();

@@ -36,6 +36,7 @@ interface JobApplication {
   job_url?: string;
   description: string;
   similarity_score?: number;
+  original_content?: string;
 }
 
 interface UserProfile {
@@ -168,6 +169,7 @@ export function ApplicationTracker() {
           ...jobData,
           status: 'Not Applied', // Set default status to 'Not Applied'
           supabaseUserId,
+          original_content: jobContent,
         }),
       });
 
@@ -230,6 +232,7 @@ Please provide the following information in a JSON format:
 
 Ensure all fields are filled, using "N/A" if the information is not available. For arrays, provide at least one item or ["N/A"] if no information is found.`,
           supabaseUserId,
+          original_content: jobContent,
         }),
       });
 

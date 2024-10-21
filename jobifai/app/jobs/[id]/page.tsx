@@ -18,11 +18,13 @@ interface JobDetails {
   skills: string[] | null;
   responsibilities: string[] | null;
   requirements: string[] | null;
-  [key: string]: string | string[] | null; // Add this line
+  original_content: string | null;
+  [key: string]: string | string[] | null;
 }
 
 export default function JobDetailsPage() {
   const [job, setJob] = useState<JobDetails | null>(null);
+  const [showOriginalContent, setShowOriginalContent] = useState(false);
   const { id } = useParams();
   const supabaseUserId = useUserStore((state) => state.supabaseUserId);
 
@@ -45,6 +47,10 @@ export default function JobDetailsPage() {
       console.error('Error fetching job details:', error);
     }
   }, [supabaseUserId, id]);
+
+  const toggleOriginalContent = () => {
+    setShowOriginalContent(!showOriginalContent);
+  };
 
   useEffect(() => {
     if (supabaseUserId) {
@@ -95,6 +101,23 @@ export default function JobDetailsPage() {
               )}
             </div>
           ))}
+
+          {job.original_content && (
+            <div className="mt-6">
+              <button
+                onClick={toggleOriginalContent}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-full transition duration-300 ease-in-out"
+              >
+                {showOriginalContent ? 'Hide Original Content' : 'Show Original Content'}
+              </button>
+              {showOriginalContent && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-2">Original Job Posting:</h3>
+                  <pre className="whitespace-pre-wrap text-sm">{job.original_content}</pre>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
