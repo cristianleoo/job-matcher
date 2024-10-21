@@ -16,21 +16,22 @@ interface Note {
   id: number;
   title: string;
   content: string;
-  created_at: string;
-  updated_at: string;
-  user_id: string;
   path: string;
 }
 
 interface TreeNode {
   name: string;
   children: TreeNode[];
-  note?: Note;
   isFolder: boolean;
-  isOpen?: boolean;
+  isOpen: boolean;
+  note?: Note;
 }
 
-const NotesListSidebar: React.FC = () => {
+interface NotesListSidebarProps {
+  onNoteSelect: (note: Note) => void;
+}
+
+const NotesListSidebar: React.FC<NotesListSidebarProps> = ({ onNoteSelect }) => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [treeStructure, setTreeStructure] = useState<TreeNode>({ name: '/', children: [], isFolder: true, isOpen: true });
   const supabaseUserId = useUserStore((state) => state.supabaseUserId);
@@ -74,7 +75,7 @@ const NotesListSidebar: React.FC = () => {
         currentNode = child;
 
         if (index === parts.length - 1) {
-          currentNode.children.push({ name: note.title, children: [], note, isFolder: false });
+          currentNode.children.push({ name: note.title, children: [], note, isFolder: false, isOpen: false });
         }
       });
     });
